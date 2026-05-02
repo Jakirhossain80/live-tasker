@@ -3,6 +3,7 @@ import cors = require("cors");
 import cookieParser = require("cookie-parser");
 import authRoutes = require("./routes/authRoutes");
 import boardRoutes = require("./routes/boardRoutes");
+import commentRoutes = require("./routes/commentRoutes");
 import taskRoutes = require("./routes/taskRoutes");
 import workspaceRoutes = require("./routes/workspaceRoutes");
 import errorHandler = require("./middlewares/errorHandler");
@@ -29,6 +30,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/workspaces", workspaceRoutes);
 app.use("/api", boardRoutes);
 app.use("/api", taskRoutes);
+app.use("/api", commentRoutes);
 
 app.use(errorHandler);
 

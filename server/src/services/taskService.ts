@@ -2,6 +2,7 @@ import mongoose = require("mongoose");
 import Board = require("../models/Board");
 import Task = require("../models/Task");
 import Workspace = require("../models/Workspace");
+import activityLogService = require("./activityLogService");
 
 const taskPriorities = ["low", "medium", "high", "urgent"] as const;
 type TaskPriority = (typeof taskPriorities)[number];
@@ -179,6 +180,12 @@ const normalizeLabels = (labels: string[]) => {
   return labels.map((label) => label.trim()).filter(Boolean);
 };
 
+const getDefinedFields = (fields: Record<string, unknown>) => {
+  return Object.entries(fields)
+    .filter(([, value]) => value !== undefined)
+    .map(([field]) => field);
+};
+
 const createTask = async ({
   boardId,
   userId,
@@ -232,6 +239,18 @@ const createTask = async ({
 
   const task = await (Task as any).create(taskData);
 
+  await activityLogService.logTaskCreated({
+    workspace: task.workspace,
+    board: task.board,
+    task: task._id,
+    actor: userId,
+    taskTitle: task.title,
+    metadata: {
+      status,
+      priority: task.priority,
+    },
+  });
+
   return populateTask(Task.findById(task._id));
 };
 
@@ -264,6 +283,18 @@ const updateTask = async ({
   order,
 }: UpdateTaskInput) => {
   const task = await getTaskForMember(taskId, userId);
+  const updatedFields = getDefinedFields({
+    status,
+    title,
+    description,
+    assignees,
+    priority,
+    dueDate,
+    labels,
+    order,
+  });
+  const previousStatus = String(task.status);
+  const previousOrder = task.order;
 
   if (status !== undefined) {
     const board = await Board.findById(task.board);
@@ -309,11 +340,28 @@ const updateTask = async ({
 
   await task.save();
 
+  await activityLogService.logTaskUpdated({
+    workspace: task.workspace,
+    board: task.board,
+    task: task._id,
+    actor: userId,
+    taskTitle: task.title,
+    metadata: {
+      updatedFields,
+      previousStatus,
+      currentStatus: String(task.status),
+      previousOrder,
+      currentOrder: task.order,
+    },
+  });
+
   return populateTask(Task.findById(task._id));
 };
 
 const moveTask = async ({ taskId, userId, status, order }: MoveTaskInput) => {
   const task = await getTaskForMember(taskId, userId);
+  const previousStatus = String(task.status);
+  const previousOrder = task.order;
   const board = await Board.findById(task.board);
 
   if (!board) {
@@ -326,6 +374,20 @@ const moveTask = async ({ taskId, userId, status, order }: MoveTaskInput) => {
   task.order = order;
 
   await task.save();
+
+  await activityLogService.logTaskMoved({
+    workspace: task.workspace,
+    board: task.board,
+    task: task._id,
+    actor: userId,
+    taskTitle: task.title,
+    metadata: {
+      previousStatus,
+      currentStatus: String(task.status),
+      previousOrder,
+      currentOrder: task.order,
+    },
+  });
 
   return populateTask(Task.findById(task._id));
 };

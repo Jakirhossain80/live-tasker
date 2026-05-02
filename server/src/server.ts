@@ -1,14 +1,19 @@
 import dotenv = require("dotenv");
+import http = require("http");
 import app = require("./app");
 import connectDB = require("./config/db");
+import socketSetup = require("./sockets/socketSetup");
 
 dotenv.config();
 
 const port = process.env.PORT || 5000;
+const server = http.createServer(app);
+
+socketSetup.initializeSocket(server);
 
 connectDB()
   .then(() => {
-    app.listen(port, () => {
+    server.listen(port, () => {
       console.log(`LiveTasker API is running on port ${port}`);
     });
   })

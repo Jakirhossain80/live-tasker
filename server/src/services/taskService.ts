@@ -3,6 +3,7 @@ import Board = require("../models/Board");
 import Task = require("../models/Task");
 import Workspace = require("../models/Workspace");
 import activityLogService = require("./activityLogService");
+import socketEmitter = require("../sockets/socketEmitter");
 
 const taskPriorities = ["low", "medium", "high", "urgent"] as const;
 type TaskPriority = (typeof taskPriorities)[number];
@@ -251,7 +252,11 @@ const createTask = async ({
     },
   });
 
-  return populateTask(Task.findById(task._id));
+  const populatedTask = await populateTask(Task.findById(task._id));
+
+  socketEmitter.emitTaskCreated(populatedTask);
+
+  return populatedTask;
 };
 
 const getTasksByBoard = async (boardId: string, userId: string) => {
@@ -355,7 +360,11 @@ const updateTask = async ({
     },
   });
 
-  return populateTask(Task.findById(task._id));
+  const populatedTask = await populateTask(Task.findById(task._id));
+
+  socketEmitter.emitTaskUpdated(populatedTask);
+
+  return populatedTask;
 };
 
 const moveTask = async ({ taskId, userId, status, order }: MoveTaskInput) => {
@@ -389,7 +398,11 @@ const moveTask = async ({ taskId, userId, status, order }: MoveTaskInput) => {
     },
   });
 
-  return populateTask(Task.findById(task._id));
+  const populatedTask = await populateTask(Task.findById(task._id));
+
+  socketEmitter.emitTaskMoved(populatedTask);
+
+  return populatedTask;
 };
 
 const deleteTask = async (taskId: string, userId: string) => {
@@ -416,6 +429,12 @@ const deleteTask = async (taskId: string, userId: string) => {
   }
 
   await Task.findByIdAndDelete(task._id);
+
+  socketEmitter.emitTaskDeleted({
+    taskId: String(task._id),
+    workspaceId: String(task.workspace),
+    boardId: String(task.board),
+  });
 };
 
 export = {

@@ -3,6 +3,7 @@ import Comment = require("../models/Comment");
 import Task = require("../models/Task");
 import Workspace = require("../models/Workspace");
 import activityLogService = require("./activityLogService");
+import socketEmitter = require("../sockets/socketEmitter");
 
 interface CreateCommentInput {
   taskId: string;
@@ -122,7 +123,11 @@ const createComment = async ({
     },
   });
 
-  return populateComment(Comment.findById(comment._id));
+  const populatedComment = await populateComment(Comment.findById(comment._id));
+
+  socketEmitter.emitCommentAdded(populatedComment);
+
+  return populatedComment;
 };
 
 const getCommentsByTask = async (taskId: string, userId: string) => {

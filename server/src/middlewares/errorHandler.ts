@@ -1,7 +1,15 @@
 import type { ErrorRequestHandler } from "express";
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  const errorStatusCode =
+    typeof err === "object" &&
+    err !== null &&
+    "statusCode" in err &&
+    typeof err.statusCode === "number"
+      ? err.statusCode
+      : undefined;
+
+  const statusCode = errorStatusCode || (res.statusCode === 200 ? 500 : res.statusCode);
 
   res.status(statusCode).json({
     success: false,

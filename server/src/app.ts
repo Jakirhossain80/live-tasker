@@ -2,6 +2,7 @@ import express = require("express");
 import cors = require("cors");
 import cookieParser = require("cookie-parser");
 import authRoutes = require("./routes/authRoutes");
+import workspaceRoutes = require("./routes/workspaceRoutes");
 import errorHandler = require("./middlewares/errorHandler");
 
 const app = express();
@@ -23,6 +24,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/workspaces", workspaceRoutes);
 
 app.use(errorHandler);
 

@@ -3,45 +3,20 @@ import mongoose = require("mongoose");
 const taskPriorities = ["low", "medium", "high", "urgent"] as const;
 type TaskPriority = (typeof taskPriorities)[number];
 
-interface ITaskChecklistItem {
-  title: string;
-  isCompleted: boolean;
-}
-
 interface ITask {
   workspace: mongoose.Types.ObjectId;
   board: mongoose.Types.ObjectId;
-  column: mongoose.Types.ObjectId;
+  status: mongoose.Types.ObjectId;
   title: string;
   description?: string;
   assignees: mongoose.Types.ObjectId[];
   priority: TaskPriority;
   dueDate?: Date;
   labels: string[];
-  checklist: ITaskChecklistItem[];
-  position: number;
+  order: number;
   createdBy: mongoose.Types.ObjectId;
-  completedAt?: Date;
   isArchived: boolean;
 }
-
-const taskChecklistItemSchema = new mongoose.Schema<ITaskChecklistItem>(
-  {
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 200,
-    },
-    isCompleted: {
-      type: Boolean,
-      default: false,
-    },
-  },
-  {
-    _id: true,
-  },
-);
 
 const taskSchema = new mongoose.Schema<ITask>(
   {
@@ -57,7 +32,7 @@ const taskSchema = new mongoose.Schema<ITask>(
       required: true,
       index: true,
     },
-    column: {
+    status: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
@@ -95,11 +70,7 @@ const taskSchema = new mongoose.Schema<ITask>(
       type: [String],
       default: [],
     },
-    checklist: {
-      type: [taskChecklistItemSchema],
-      default: [],
-    },
-    position: {
+    order: {
       type: Number,
       required: true,
       min: 0,
@@ -109,9 +80,6 @@ const taskSchema = new mongoose.Schema<ITask>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-    },
-    completedAt: {
-      type: Date,
     },
     isArchived: {
       type: Boolean,
@@ -124,7 +92,7 @@ const taskSchema = new mongoose.Schema<ITask>(
   },
 );
 
-taskSchema.index({ board: 1, column: 1, position: 1 });
+taskSchema.index({ board: 1, status: 1, order: 1 });
 taskSchema.index({ assignees: 1 });
 taskSchema.index({ dueDate: 1 });
 

@@ -1,12 +1,7 @@
-import './App.css'
+import DashboardHome from './pages/dashboard/DashboardHome'
 
 function App() {
-  return (
-    <main className="app-shell">
-      <h1>LiveTasker</h1>
-      <p>React frontend setup is ready.</p>
-    </main>
-  )
+  return <DashboardHome />
 }
 
 export default App

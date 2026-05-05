@@ -12,10 +12,10 @@ import { NavLink } from 'react-router-dom'
 
 const navigationItems = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/' },
-  { label: 'My Tasks', icon: SquareCheckBig, to: '/tasks' },
+  { label: 'My Tasks', icon: SquareCheckBig, to: '/dashboard/my-tasks' },
   { label: 'Boards', icon: Columns3, to: '/dashboard/boards/main-board' },
   { label: 'Workspaces', icon: FolderKanban, to: '/workspaces' },
-  { label: 'Activity', icon: Activity, to: '/activity' },
+  { label: 'Activity', icon: Activity, to: '/dashboard/activity' },
   { label: 'Settings', icon: Settings, to: '/settings' },
 ]
 

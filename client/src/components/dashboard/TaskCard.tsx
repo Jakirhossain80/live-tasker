@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 type TaskCardProps = {
   title: string
@@ -20,7 +21,10 @@ function TaskCard({
   comments,
 }: TaskCardProps) {
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow">
+    <Link
+      to="/dashboard/tasks/demo-task"
+      className="block rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow"
+    >
       <div className="flex items-start gap-4">
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconClassName}`}>
           {icon}
@@ -43,7 +47,7 @@ function TaskCard({
           </div>
         </div>
       </div>
-    </article>
+    </Link>
   )
 }
 

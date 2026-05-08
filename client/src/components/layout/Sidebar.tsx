@@ -18,7 +18,7 @@ const navigationItems = [
   { label: 'Members', icon: Users, to: '/dashboard/members' },
   { label: 'Workspaces', icon: FolderKanban, to: '/workspaces' },
   { label: 'Activity', icon: Activity, to: '/dashboard/activity' },
-  { label: 'Settings', icon: Settings, to: '/settings' },
+  { label: 'Settings', icon: Settings, to: '/dashboard/settings' },
 ]
 
 function Sidebar() {

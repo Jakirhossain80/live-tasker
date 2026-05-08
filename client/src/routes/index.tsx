@@ -6,6 +6,7 @@ import DashboardHome from '../pages/dashboard/DashboardHome'
 import Members from '../pages/dashboard/Members'
 import MyTasks from '../pages/dashboard/MyTasks'
 import ProjectBoard from '../pages/dashboard/ProjectBoard'
+import Settings from '../pages/dashboard/Settings'
 import TaskDetails from '../pages/dashboard/TaskDetails'
 
 export const router = createBrowserRouter([
@@ -48,6 +49,10 @@ export const router = createBrowserRouter([
       {
         path: 'dashboard/activity',
         element: <Activity />,
+      },
+      {
+        path: 'dashboard/settings',
+        element: <Settings />,
       },
     ],
   },

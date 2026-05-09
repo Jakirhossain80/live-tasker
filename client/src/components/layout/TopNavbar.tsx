@@ -1,6 +1,24 @@
-import { Bell, Grid3X3, Menu, Search } from 'lucide-react'
+import { Bell, Grid3X3, LogOut, Menu, Search } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../../store/auth.store'
 
 function TopNavbar() {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const logout = useAuthStore((state) => state.logout)
+  const initials =
+    user?.name
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'LT'
+
+  async function handleLogout() {
+    await logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <header className="fixed left-0 right-0 top-0 z-50 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/90 px-4 shadow-sm backdrop-blur sm:px-6 lg:px-8">
       <div className="flex items-center gap-3">
@@ -43,8 +61,17 @@ function TopNavbar() {
         </button>
 
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
-          AR
+          {initials}
         </div>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+          aria-label="Log out"
+        >
+          <LogOut className="h-5 w-5" />
+        </button>
       </div>
     </header>
   )

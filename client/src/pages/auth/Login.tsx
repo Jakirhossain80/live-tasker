@@ -1,10 +1,46 @@
 import { Eye, LockKeyhole, Mail } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { AxiosError } from 'axios'
+import { loginUser } from '../../api/auth'
 import AuthCard from '../../components/auth/AuthCard'
 import AuthShell from '../../components/auth/AuthShell'
 import SocialLoginButtons from '../../components/auth/SocialLoginButtons'
+import { useAuthStore } from '../../store/auth.store'
+
+type ApiErrorResponse = {
+  message?: string
+}
 
 function Login() {
+  const navigate = useNavigate()
+  const setAuth = useAuthStore((state) => state.setAuth)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setErrorMessage('')
+    setIsSubmitting(true)
+
+    try {
+      const { user, accessToken } = await loginUser({ email, password })
+
+      setAuth(user, accessToken)
+      navigate('/dashboard')
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorResponse>
+      const message = axiosError.response?.data?.message ?? 'Unable to sign in. Please check your email and password.'
+
+      setErrorMessage(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <AuthShell>
       <AuthCard title="Welcome back">
@@ -16,7 +52,7 @@ function Login() {
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
-        <form className="space-y-5">
+        <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="text-sm font-semibold text-slate-700">
               Email address
@@ -29,6 +65,8 @@ function Login() {
                 type="email"
                 autoComplete="email"
                 placeholder="name@company.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 className="min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400"
               />
             </div>
@@ -54,6 +92,8 @@ function Login() {
                 type="password"
                 autoComplete="current-password"
                 placeholder="........"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 className="min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400"
               />
               <button
@@ -78,11 +118,18 @@ function Login() {
             </label>
           </div>
 
+          {errorMessage ? (
+            <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+              {errorMessage}
+            </p>
+          ) : null}
+
           <button
             type="submit"
-            className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200"
+            disabled={isSubmitting}
+            className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 disabled:cursor-not-allowed disabled:bg-indigo-400"
           >
-            Sign In
+            {isSubmitting ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 

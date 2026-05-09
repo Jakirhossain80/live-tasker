@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom'
+import ProtectedRoute, { PublicOnlyRoute } from '../components/guards/ProtectedRoute'
 import DashboardLayout from '../layouts/DashboardLayout'
 import Login from '../pages/auth/Login'
 import Register from '../pages/auth/Register'
@@ -23,15 +24,27 @@ export const router = createBrowserRouter([
   },
   {
     path: '/login',
-    element: <Login />,
+    element: (
+      <PublicOnlyRoute>
+        <Login />
+      </PublicOnlyRoute>
+    ),
   },
   {
     path: '/register',
-    element: <Register />,
+    element: (
+      <PublicOnlyRoute>
+        <Register />
+      </PublicOnlyRoute>
+    ),
   },
   {
     path: '/dashboard',
-    element: <DashboardLayout />,
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -69,7 +82,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/project-board',
-    element: <DashboardLayout />,
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

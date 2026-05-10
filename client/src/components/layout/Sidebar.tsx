@@ -7,21 +7,25 @@ import {
   Plus,
   Settings,
   SquareCheckBig,
+  UserRound,
   Users,
 } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, matchPath, useLocation } from 'react-router-dom'
 
 const navigationItems = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
   { label: 'My Tasks', icon: SquareCheckBig, to: '/dashboard/my-tasks' },
-  { label: 'Boards', icon: Columns3, to: '/dashboard/boards/main-board' },
+  { label: 'Boards', icon: Columns3, to: '/dashboard/boards/demo-board', activePath: '/dashboard/boards/:boardId' },
   { label: 'Members', icon: Users, to: '/dashboard/members' },
   { label: 'Workspaces', icon: FolderKanban, to: '/dashboard/workspaces' },
   { label: 'Activity', icon: Activity, to: '/dashboard/activity' },
+  { label: 'Profile', icon: UserRound, to: '/dashboard/profile' },
   { label: 'Settings', icon: Settings, to: '/dashboard/settings' },
 ]
 
 function Sidebar() {
+  const location = useLocation()
+
   return (
     <aside className="fixed bottom-0 left-0 top-16 z-40 hidden w-[280px] border-r border-slate-200 bg-white shadow-sm md:flex md:flex-col">
       <div className="px-4 py-5">
@@ -49,12 +53,17 @@ function Sidebar() {
       <nav className="flex-1 space-y-1 px-4">
         {navigationItems.map((item) => {
           const Icon = item.icon
+          const isActive = Boolean(
+            item.activePath
+              ? matchPath({ path: item.activePath, end: true }, location.pathname)
+              : matchPath({ path: item.to, end: item.to === '/dashboard' }, location.pathname),
+          )
 
           return (
             <NavLink
               key={item.label}
               to={item.to}
-              className={({ isActive }) =>
+              className={() =>
                 `flex items-center gap-3 border-l-4 px-3 py-2.5 text-sm font-medium transition ${
                   isActive
                     ? 'border-indigo-600 bg-indigo-50 text-indigo-700'

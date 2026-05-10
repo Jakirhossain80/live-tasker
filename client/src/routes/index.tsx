@@ -7,6 +7,7 @@ import Activity from '../pages/dashboard/Activity'
 import DashboardHome from '../pages/dashboard/DashboardHome'
 import Members from '../pages/dashboard/Members'
 import MyTasks from '../pages/dashboard/MyTasks'
+import Profile from '../pages/dashboard/Profile'
 import ProjectBoard from '../pages/dashboard/ProjectBoard'
 import Settings from '../pages/dashboard/Settings'
 import TaskDetails from '../pages/dashboard/TaskDetails'
@@ -77,6 +78,10 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         element: <Settings />,
+      },
+      {
+        path: 'profile',
+        element: <Profile />,
       },
     ],
   },

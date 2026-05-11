@@ -1,10 +1,10 @@
 import { MoreVertical } from 'lucide-react'
 
-export type WorkspaceMemberRole = 'Admin' | 'Member'
+export type WorkspaceMemberRole = 'Owner' | 'Admin' | 'Member'
 export type WorkspaceMemberStatus = 'Active' | 'Offline'
 
 export type WorkspaceMember = {
-  id: number
+  id: string
   name: string
   email: string
   initials: string
@@ -19,6 +19,7 @@ const statusClassNames: Record<WorkspaceMemberStatus, string> = {
 }
 
 const roleClassNames: Record<WorkspaceMemberRole, string> = {
+  Owner: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
   Admin: 'bg-indigo-50 text-indigo-700 ring-indigo-100',
   Member: 'bg-slate-100 text-slate-700 ring-slate-200',
 }

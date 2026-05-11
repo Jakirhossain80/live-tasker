@@ -5,7 +5,7 @@ import TaskPriorityBadge, { type TaskPriority } from './TaskPriorityBadge'
 import TaskStatusBadge, { type TaskStatus } from './TaskStatusBadge'
 
 export type MyTask = {
-  id: number
+  id: string
   title: string
   project: string
   dueDate: string
@@ -22,7 +22,7 @@ type MyTasksTableRowProps = {
 function MyTasksTableRow({ task }: MyTasksTableRowProps) {
   const Icon = task.icon
   const navigate = useNavigate()
-  const taskDetailsPath = '/dashboard/tasks/demo-task'
+  const taskDetailsPath = `/dashboard/tasks/${task.id}`
 
   return (
     <tr

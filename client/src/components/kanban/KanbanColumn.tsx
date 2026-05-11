@@ -2,7 +2,9 @@ import KanbanAddTaskButton from './KanbanAddTaskButton'
 import KanbanTaskCard from './KanbanTaskCard'
 
 export type KanbanTask = {
-  id: number
+  id: string
+  status: string
+  order: number
   title: string
   description?: string
   priority: string
@@ -15,14 +17,34 @@ export type KanbanTask = {
 }
 
 type KanbanColumnProps = {
+  columnId: string
   title: string
   count: number
   accentClassName: string
   tasks: KanbanTask[]
+  columnOptions?: { id: string; title: string }[]
   showAddTaskButton?: boolean
+  onAddTask?: (columnId: string) => void
+  onTaskClick?: (taskId: string) => void
+  onEditTask?: (taskId: string) => void
+  onDeleteTask?: (taskId: string) => void
+  onMoveTask?: (taskId: string, status: string) => void
 }
 
-function KanbanColumn({ title, count, accentClassName, tasks, showAddTaskButton = false }: KanbanColumnProps) {
+function KanbanColumn({
+  columnId,
+  title,
+  count,
+  accentClassName,
+  tasks,
+  columnOptions,
+  showAddTaskButton = false,
+  onAddTask,
+  onTaskClick,
+  onEditTask,
+  onDeleteTask,
+  onMoveTask,
+}: KanbanColumnProps) {
   return (
     <section className="flex min-h-[calc(100vh-196px)] min-w-[320px] max-w-[320px] shrink-0 flex-col rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm sm:min-h-[calc(100vh-172px)]">
       <div className="mb-4 flex items-center justify-between">
@@ -36,25 +58,37 @@ function KanbanColumn({ title, count, accentClassName, tasks, showAddTaskButton 
       </div>
 
       <div className="flex flex-1 flex-col gap-3">
-        {tasks.map((task) => (
-          <KanbanTaskCard
-            key={task.id}
-            title={task.title}
-            description={task.description}
-            priority={task.priority}
-            dueDate={task.dueDate}
-            comments={task.comments}
-            live={task.live}
-            hasImage={task.hasImage}
-            completed={task.completed}
-            priorityClassName={task.priorityClassName}
-          />
-        ))}
+        {tasks.length > 0 ? (
+          tasks.map((task) => (
+            <KanbanTaskCard
+              key={task.id}
+              status={task.status}
+              title={task.title}
+              description={task.description}
+              priority={task.priority}
+              dueDate={task.dueDate}
+              comments={task.comments}
+              live={task.live}
+              hasImage={task.hasImage}
+              completed={task.completed}
+              priorityClassName={task.priorityClassName}
+              columnOptions={columnOptions}
+              onClick={() => onTaskClick?.(task.id)}
+              onEdit={() => onEditTask?.(task.id)}
+              onDelete={() => onDeleteTask?.(task.id)}
+              onMove={(status) => onMoveTask?.(task.id, status)}
+            />
+          ))
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-4 py-5 text-center text-sm font-medium leading-6 text-slate-400">
+            No tasks in this column yet.
+          </div>
+        )}
       </div>
 
       {showAddTaskButton ? (
         <div className="mt-4">
-          <KanbanAddTaskButton />
+          <KanbanAddTaskButton onClick={() => onAddTask?.(columnId)} />
         </div>
       ) : null}
     </section>

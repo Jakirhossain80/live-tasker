@@ -13,11 +13,12 @@ function MembersTable({ members }: MembersTableProps) {
           className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 sm:w-40"
         >
           <option>All Roles</option>
+          <option>Owner</option>
           <option>Admin</option>
           <option>Member</option>
           <option>Guest</option>
         </select>
-        <p className="text-sm font-medium text-slate-500">Showing 24 members</p>
+        <p className="text-sm font-medium text-slate-500">Showing {members.length} members</p>
       </div>
 
       <div className="overflow-x-auto">
@@ -40,7 +41,7 @@ function MembersTable({ members }: MembersTableProps) {
       </div>
 
       <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-medium text-slate-500">Page 1 of 3</p>
+        <p className="text-sm font-medium text-slate-500">Page 1 of 1</p>
         <div className="flex items-center gap-2">
           <button
             type="button"

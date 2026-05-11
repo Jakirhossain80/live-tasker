@@ -27,7 +27,7 @@ function MyTasksTable({ tasks }: MyTasksTableProps) {
       </div>
 
       <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-medium text-slate-500">Showing 5 of 124 tasks</p>
+        <p className="text-sm font-medium text-slate-500">Showing {tasks.length} tasks</p>
 
         <div className="flex items-center gap-2">
           {['Previous', '1', '2', '3', 'Next'].map((item) => (

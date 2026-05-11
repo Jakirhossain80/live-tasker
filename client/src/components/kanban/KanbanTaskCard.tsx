@@ -1,6 +1,7 @@
-import { CalendarDays, Image, MessageSquare, MoreHorizontal, Radio } from 'lucide-react'
+import { CalendarDays, Image, MessageSquare, Pencil, Radio, Trash2 } from 'lucide-react'
 
 type KanbanTaskCardProps = {
+  status: string
   title: string
   description?: string
   priority: string
@@ -10,9 +11,15 @@ type KanbanTaskCardProps = {
   hasImage?: boolean
   completed?: boolean
   priorityClassName: string
+  columnOptions?: { id: string; title: string }[]
+  onClick?: () => void
+  onEdit?: () => void
+  onDelete?: () => void
+  onMove?: (status: string) => void
 }
 
 function KanbanTaskCard({
+  status,
   title,
   description,
   priority,
@@ -22,12 +29,18 @@ function KanbanTaskCard({
   hasImage,
   completed,
   priorityClassName,
+  columnOptions = [],
+  onClick,
+  onEdit,
+  onDelete,
+  onMove,
 }: KanbanTaskCardProps) {
   return (
     <article
+      onClick={onClick}
       className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-300 hover:shadow-md ${
         completed ? 'opacity-70 grayscale' : ''
-      }`}
+      } ${onClick ? 'cursor-pointer' : ''}`}
     >
       {hasImage ? (
         <div className="mb-4 flex aspect-[16/9] items-center justify-center rounded-lg border border-slate-200 bg-indigo-50 text-indigo-500">
@@ -41,11 +54,28 @@ function KanbanTaskCard({
         </span>
         <button
           type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onEdit?.()
+          }}
           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-          aria-label={`More options for ${title}`}
+          aria-label={`Edit ${title}`}
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <Pencil className="h-4 w-4" />
         </button>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onDelete()
+            }}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+            aria-label={`Delete ${title}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        ) : null}
       </div>
 
       <h3 className={`mt-3 text-sm font-semibold leading-6 text-slate-950 ${completed ? 'line-through' : ''}`}>
@@ -73,6 +103,23 @@ function KanbanTaskCard({
           </span>
         ) : null}
       </div>
+
+      {columnOptions.length > 0 ? (
+        <label className="mt-4 block" onClick={(event) => event.stopPropagation()}>
+          <span className="sr-only">Move task status</span>
+          <select
+            value={status}
+            onChange={(event) => onMove?.(event.target.value)}
+            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600 outline-none transition hover:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+          >
+            {columnOptions.map((column) => (
+              <option key={column.id} value={column.id}>
+                {column.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
     </article>
   )
 }

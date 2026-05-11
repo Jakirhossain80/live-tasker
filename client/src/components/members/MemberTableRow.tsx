@@ -1,10 +1,10 @@
 import { MoreVertical } from 'lucide-react'
 import MemberStatusBadge, { type MemberStatus } from './MemberStatusBadge'
 
-export type MemberRole = 'Admin' | 'Member' | 'Guest'
+export type MemberRole = 'Owner' | 'Admin' | 'Member' | 'Guest'
 
 export type Member = {
-  id: number
+  id: string
   name: string
   email: string
   initials: string
@@ -46,6 +46,7 @@ function MemberTableRow({ member }: MemberTableRowProps) {
           aria-label={`Role for ${member.name}`}
           className="rounded-lg border-0 bg-transparent px-0 py-1 text-sm font-semibold text-slate-700 outline-none transition hover:text-indigo-600 focus:text-indigo-600 focus:ring-0"
         >
+          <option>Owner</option>
           <option>Admin</option>
           <option>Member</option>
           <option>Guest</option>

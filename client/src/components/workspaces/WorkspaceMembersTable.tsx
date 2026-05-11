@@ -11,7 +11,7 @@ function WorkspaceMembersTable({ members }: WorkspaceMembersTableProps) {
         <div className="flex items-center gap-3">
           <h3 className="text-base font-bold text-slate-950">Team Members</h3>
           <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700">
-            24 Total
+            {members.length} Total
           </span>
         </div>
       </div>

@@ -1,23 +1,29 @@
-const stats = [
-  {
-    label: 'TOTAL TASKS',
-    value: '124',
-    valueClassName: 'text-slate-950',
-  },
-  {
-    label: 'IN PROGRESS',
-    value: '32',
-    valueClassName: 'text-slate-950',
-    showPulse: true,
-  },
-  {
-    label: 'COMPLETED TODAY',
-    value: '12',
-    valueClassName: 'text-emerald-600',
-  },
-]
+type MyTasksStatsProps = {
+  totalTasks?: number
+  inProgressTasks?: number
+  completedTasks?: number
+}
 
-function MyTasksStats() {
+function MyTasksStats({ totalTasks = 0, inProgressTasks = 0, completedTasks = 0 }: MyTasksStatsProps) {
+  const stats = [
+    {
+      label: 'TOTAL TASKS',
+      value: String(totalTasks),
+      valueClassName: 'text-slate-950',
+    },
+    {
+      label: 'IN PROGRESS',
+      value: String(inProgressTasks),
+      valueClassName: 'text-slate-950',
+      showPulse: inProgressTasks > 0,
+    },
+    {
+      label: 'COMPLETED',
+      value: String(completedTasks),
+      valueClassName: 'text-emerald-600',
+    },
+  ]
+
   return (
     <section className="flex gap-4 overflow-x-auto pb-1 lg:overflow-visible">
       {stats.map((stat) => (

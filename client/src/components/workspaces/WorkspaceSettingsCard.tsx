@@ -1,4 +1,12 @@
-function WorkspaceSettingsCard() {
+type WorkspaceSettingsCardProps = {
+  name?: string
+  description?: string
+}
+
+function WorkspaceSettingsCard({
+  name = 'Product Engineering',
+  description = 'Core development and engineering hub for the main platform roadmap.',
+}: WorkspaceSettingsCardProps) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div>
@@ -10,7 +18,8 @@ function WorkspaceSettingsCard() {
           <span className="text-sm font-semibold text-slate-700">Name</span>
           <input
             type="text"
-            defaultValue="Product Engineering"
+            value={name}
+            readOnly
             className="mt-2 h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
           />
         </label>
@@ -18,7 +27,8 @@ function WorkspaceSettingsCard() {
         <label className="block">
           <span className="text-sm font-semibold text-slate-700">Description</span>
           <textarea
-            defaultValue="Core development and engineering hub for the main platform roadmap."
+            value={description}
+            readOnly
             rows={4}
             className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium leading-6 text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
           />
@@ -44,6 +54,7 @@ function WorkspaceSettingsCard() {
 
       <button
         type="button"
+        disabled
         className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
       >
         Save Changes

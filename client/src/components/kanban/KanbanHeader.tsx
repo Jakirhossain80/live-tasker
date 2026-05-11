@@ -6,11 +6,19 @@ const members = [
   { name: 'Mina Lee', initials: 'ML', className: 'bg-rose-600' },
 ]
 
-function KanbanHeader() {
+type KanbanHeaderProps = {
+  title?: string
+  description?: string
+}
+
+function KanbanHeader({ title = 'Kanban Board', description }: KanbanHeaderProps) {
   return (
     <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-wrap items-center gap-4">
-        <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">Kanban Board</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">{title}</h1>
+          {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{description}</p> : null}
+        </div>
 
         <div className="flex -space-x-2">
           {members.map((member) => (

@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export type TimelineItem = {
-  id: number
+  id: string
   title: string
   description: string
   actor: string

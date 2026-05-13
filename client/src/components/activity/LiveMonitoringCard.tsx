@@ -1,6 +1,13 @@
-const avatars = ['SM', 'AC', 'MP', 'JL']
+const fallbackAvatars = ['SM', 'AC', 'MP', 'JL']
 
-function LiveMonitoringCard() {
+type LiveMonitoringCardProps = {
+  status?: string
+  avatars?: string[]
+}
+
+function LiveMonitoringCard({ status = 'Team Velocity High', avatars = fallbackAvatars }: LiveMonitoringCardProps) {
+  const displayedAvatars = avatars.length > 0 ? avatars : fallbackAvatars
+
   return (
     <aside className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex h-full flex-col justify-between gap-5">
@@ -12,11 +19,11 @@ function LiveMonitoringCard() {
               <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-bold text-slate-950">Team Velocity High</p>
+          <p className="mt-3 text-2xl font-bold text-slate-950">{status}</p>
         </div>
 
         <div className="flex -space-x-2">
-          {avatars.map((avatar) => (
+          {displayedAvatars.map((avatar) => (
             <div
               key={avatar}
               className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-indigo-50 text-xs font-bold text-indigo-700 shadow-sm"

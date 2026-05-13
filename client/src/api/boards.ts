@@ -59,6 +59,10 @@ type BoardData = {
   board: Board
 }
 
+export function isValidBoardId(boardId?: string | null) {
+  return Boolean(boardId && /^[a-f\d]{24}$/i.test(boardId))
+}
+
 export async function getBoards(workspaceId: string) {
   const response = await http.get<ApiResponse<BoardsData>>(`/workspaces/${workspaceId}/boards`)
 
@@ -66,6 +70,10 @@ export async function getBoards(workspaceId: string) {
 }
 
 export async function getBoardById(boardId: string) {
+  if (!isValidBoardId(boardId)) {
+    throw new Error('Invalid board id.')
+  }
+
   const response = await http.get<ApiResponse<BoardData>>(`/boards/${boardId}`)
 
   return response.data.data.board

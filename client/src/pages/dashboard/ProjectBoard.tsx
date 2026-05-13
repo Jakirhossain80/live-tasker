@@ -13,10 +13,10 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
-import { Plus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { KanbanSquare, Plus } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getBoardById, type BoardColumn } from '../../api/boards'
+import { getBoardById, isValidBoardId, type BoardColumn } from '../../api/boards'
 import {
   createTask,
   deleteTask,
@@ -29,13 +29,14 @@ import {
   type TaskPriority,
   type UpdateTaskPayload,
 } from '../../api/tasks'
+import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
 import LoadingState from '../../components/common/LoadingState'
 import KanbanColumn, { type KanbanTask } from '../../components/kanban/KanbanColumn'
 import CreateTaskModal from '../../components/kanban/CreateTaskModal'
 import EditTaskModal from '../../components/kanban/EditTaskModal'
 import KanbanHeader from '../../components/kanban/KanbanHeader'
-import { emitTaskMoved, socket, type TaskMovedPayload } from '../../socket/socket'
+import { connectSocket, disconnectSocket, emitTaskMoved, socket, type TaskMovedPayload } from '../../socket/socket'
 
 type KanbanColumnData = {
   id: string
@@ -67,6 +68,8 @@ const priorityClassNames: Record<TaskPriority, string> = {
   high: 'bg-rose-50 text-rose-700',
   urgent: 'bg-red-50 text-red-700',
 }
+
+const emptyTasks: Task[] = []
 
 function formatDueDate(dueDate?: string) {
   if (!dueDate) {
@@ -211,6 +214,29 @@ function getTaskMovedSignature(payload: TaskMovedPayload) {
   return `${payload.boardId}:${payload.taskId}:${payload.fromStatus}:${payload.toStatus}:${payload.order}`
 }
 
+function getTaskListSignature(tasks: Task[]) {
+  return tasks
+    .map((task) => {
+      const assigneeIds = task.assignees.map((assignee) => assignee._id).join(',')
+      const labels = task.labels.join(',')
+
+      return [
+        task._id,
+        task.status,
+        task.order,
+        task.title,
+        task.description ?? '',
+        task.priority,
+        task.dueDate ?? '',
+        labels,
+        assigneeIds,
+        task.isArchived,
+        task.updatedAt,
+      ].join(':')
+    })
+    .join('|')
+}
+
 function getErrorMessage(error: unknown) {
   if (isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message || error.message
@@ -221,6 +247,7 @@ function getErrorMessage(error: unknown) {
 
 function ProjectBoard() {
   const { boardId } = useParams()
+  const hasValidBoardId = isValidBoardId(boardId)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false)
@@ -253,10 +280,10 @@ function ProjectBoard() {
   } = useQuery({
     queryKey: ['board', boardId],
     queryFn: () => getBoardById(boardId as string),
-    enabled: Boolean(boardId),
+    enabled: hasValidBoardId,
   })
   const {
-    data: tasks = [],
+    data: fetchedTasks = emptyTasks,
     isLoading: areTasksLoading,
     isError: isTasksError,
     error: tasksError,
@@ -264,25 +291,24 @@ function ProjectBoard() {
   } = useQuery({
     queryKey: ['tasks', boardId],
     queryFn: () => getTasks(boardId as string),
-    enabled: Boolean(boardId),
+    enabled: hasValidBoardId,
   })
+  const fetchedTasksSignature = useMemo(() => getTaskListSignature(fetchedTasks), [fetchedTasks])
 
   useEffect(() => {
-    setLocalTasks(tasks)
-  }, [tasks])
+    setLocalTasks((currentTasks) =>
+      getTaskListSignature(currentTasks) === fetchedTasksSignature ? currentTasks : fetchedTasks,
+    )
+  }, [fetchedTasks, fetchedTasksSignature])
 
   useEffect(() => {
-    if (!boardId) {
+    if (!hasValidBoardId || !boardId) {
       return
     }
 
-    const didConnectSocket = !socket.connected
-
-    if (didConnectSocket) {
-      socket.connect()
+    function joinCurrentBoard() {
+      socket.emit('joinBoard', { boardId })
     }
-
-    socket.emit('joinBoard', { boardId })
 
     function handleTaskMoved(payload: TaskMovedPayload) {
       if (payload.boardId !== boardId) {
@@ -299,9 +325,16 @@ function ProjectBoard() {
       setLocalTasks((currentTasks) => applyTaskMovedEvent(currentTasks, payload))
     }
 
+    socket.on('connect', joinCurrentBoard)
     socket.on('taskMoved', handleTaskMoved)
+    connectSocket()
+
+    if (socket.connected) {
+      joinCurrentBoard()
+    }
 
     return () => {
+      socket.off('connect', joinCurrentBoard)
       socket.off('taskMoved', handleTaskMoved)
       socket.emit('leaveBoard', { boardId })
 
@@ -310,12 +343,9 @@ function ProjectBoard() {
       })
       recentLocalMoveTimeoutsRef.current = []
       recentLocalMoveSignaturesRef.current.clear()
-
-      if (didConnectSocket) {
-        socket.disconnect()
-      }
+      disconnectSocket()
     }
-  }, [boardId])
+  }, [boardId, hasValidBoardId])
 
   const createTaskMutation = useMutation({
     mutationFn: (payload: CreateTaskPayload) => createTask(boardId as string, payload),
@@ -360,6 +390,9 @@ function ProjectBoard() {
       setMoveTaskErrorMessage(getErrorMessage(mutationError))
     },
   })
+  const columns = useMemo(() => (board ? mapBoardColumns(board.columns, localTasks) : []), [board, localTasks])
+  const columnOptions = useMemo(() => columns.map((column) => ({ id: column.id, title: column.title })), [columns])
+  const defaultTaskStatus = useMemo(() => selectedColumnId || columns[0]?.id || '', [columns, selectedColumnId])
 
   function openCreateTaskModal(columnId: string) {
     setSelectedColumnId(columnId)
@@ -435,10 +468,14 @@ function ProjectBoard() {
     })
   }
 
-  if (!boardId) {
+  if (!hasValidBoardId) {
     return (
       <div className="mx-auto max-w-[1440px]">
-        <ErrorState title="Board route is missing" message="Open a board from a workspace to view its columns." />
+        <EmptyState
+          icon={KanbanSquare}
+          title="No board selected"
+          message="Open a board from a workspace to view its columns."
+        />
       </div>
     )
   }
@@ -478,10 +515,6 @@ function ProjectBoard() {
       </div>
     )
   }
-
-  const columns = mapBoardColumns(board.columns, localTasks)
-  const columnOptions = columns.map((column) => ({ id: column.id, title: column.title }))
-  const defaultTaskStatus = selectedColumnId || columns[0]?.id || ''
 
   function handleDragStart(event: DragStartEvent) {
     console.log('Kanban drag start', {

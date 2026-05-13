@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Board } from './boards'
+import { isValidBoardId, type Board } from './boards'
 import type { Workspace } from './workspaces'
 
 type ApiResponse<TData> = {
@@ -62,12 +62,20 @@ type TaskData = {
 }
 
 export async function getTasks(boardId: string) {
+  if (!isValidBoardId(boardId)) {
+    throw new Error('Invalid board id.')
+  }
+
   const response = await http.get<ApiResponse<TasksData>>(`/boards/${boardId}/tasks`)
 
   return response.data.data.tasks
 }
 
 export async function createTask(boardId: string, payload: CreateTaskPayload) {
+  if (!isValidBoardId(boardId)) {
+    throw new Error('Invalid board id.')
+  }
+
   const response = await http.post<ApiResponse<TaskData>>(`/boards/${boardId}/tasks`, payload)
 
   return response.data.data.task

@@ -17,6 +17,13 @@ let bootstrapSessionRequest: Promise<RestoredSession> | null = null
 async function restoreSession() {
   bootstrapSessionRequest ??= (async () => {
     const { accessToken } = await refreshAccessToken()
+
+    if (!accessToken) {
+      throw new Error('No access token returned from refresh.')
+    }
+
+    useAuthStore.getState().setAccessToken(accessToken)
+
     const { user } = await getCurrentUser()
 
     return { accessToken, user }
@@ -27,27 +34,30 @@ async function restoreSession() {
 
 function AuthBootstrap({ children }: AuthBootstrapProps) {
   const isBootstrapped = useAuthStore((state) => state.isBootstrapped)
-  const setAuth = useAuthStore((state) => state.setAuth)
-  const clearAuth = useAuthStore((state) => state.clearAuth)
-  const setBootstrapped = useAuthStore((state) => state.setBootstrapped)
 
   useEffect(() => {
     let isMounted = true
 
     async function bootstrapAuth() {
+      const { isBootstrapped: hasBootstrapped } = useAuthStore.getState()
+
+      if (hasBootstrapped) {
+        return
+      }
+
       try {
         const { accessToken, user } = await restoreSession()
 
         if (isMounted) {
-          setAuth(user, accessToken)
+          useAuthStore.getState().setAuth(user, accessToken)
         }
       } catch {
         if (isMounted) {
-          clearAuth()
+          useAuthStore.getState().clearAuth()
         }
       } finally {
         if (isMounted) {
-          setBootstrapped(true)
+          useAuthStore.getState().setBootstrapped(true)
         }
       }
     }
@@ -57,7 +67,7 @@ function AuthBootstrap({ children }: AuthBootstrapProps) {
     return () => {
       isMounted = false
     }
-  }, [clearAuth, setAuth, setBootstrapped])
+  }, [])
 
   if (!isBootstrapped) {
     return (

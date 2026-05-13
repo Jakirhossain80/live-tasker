@@ -1,6 +1,6 @@
 import { CalendarDays, Image, MessageSquare, Pencil, Radio, Trash2 } from 'lucide-react'
 
-type KanbanTaskCardProps = {
+export type KanbanTaskCardProps = {
   status: string
   title: string
   description?: string
@@ -16,6 +16,7 @@ type KanbanTaskCardProps = {
   onEdit?: () => void
   onDelete?: () => void
   onMove?: (status: string) => void
+  className?: string
 }
 
 function KanbanTaskCard({
@@ -34,13 +35,14 @@ function KanbanTaskCard({
   onEdit,
   onDelete,
   onMove,
+  className = '',
 }: KanbanTaskCardProps) {
   return (
     <article
       onClick={onClick}
       className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-indigo-300 hover:shadow-md ${
         completed ? 'opacity-70 grayscale' : ''
-      } ${onClick ? 'cursor-pointer' : ''}`}
+      } ${onClick ? 'cursor-pointer' : ''} ${className}`}
     >
       {hasImage ? (
         <div className="mb-4 flex aspect-[16/9] items-center justify-center rounded-lg border border-slate-200 bg-indigo-50 text-indigo-500">

@@ -36,6 +36,18 @@ interface LogCommentAddedInput {
   metadata?: Record<string, unknown> | undefined;
 }
 
+const createHttpError = (message: string, statusCode: number) => {
+  const error = new Error(message);
+  Object.assign(error, { statusCode });
+  return error;
+};
+
+const validateObjectId = (id: string, fieldName: string) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw createHttpError(`Invalid ${fieldName}`, 400);
+  }
+};
+
 const logActivity = async ({
   workspace,
   board,
@@ -156,10 +168,32 @@ const logCommentAdded = async ({
   });
 };
 
+const getWorkspaceActivity = async (
+  workspaceId: string,
+  limit?: number,
+): Promise<unknown[]> => {
+  validateObjectId(workspaceId, "workspace id");
+
+  const query = ActivityLog.find({
+    workspace: workspaceId,
+  })
+    .sort({ createdAt: -1 })
+    .populate("actor", "name email avatar")
+    .populate("board", "name description")
+    .populate("task", "title status priority dueDate");
+
+  if (limit !== undefined) {
+    query.limit(limit);
+  }
+
+  return query.exec() as Promise<unknown[]>;
+};
+
 export = {
   logActivity,
   logTaskCreated,
   logTaskUpdated,
   logTaskMoved,
   logCommentAdded,
+  getWorkspaceActivity,
 };

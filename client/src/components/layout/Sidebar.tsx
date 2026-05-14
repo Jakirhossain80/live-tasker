@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import {
   Activity,
   Columns3,
@@ -10,21 +11,38 @@ import {
   UserRound,
   Users,
 } from 'lucide-react'
-import { NavLink, matchPath, useLocation } from 'react-router-dom'
+import { Link, NavLink, matchPath, useLocation } from 'react-router-dom'
+import { getBoards } from '../../api/boards'
+import { getWorkspaces } from '../../api/workspaces'
 
-const navigationItems = [
+function getNavigationItems(boardHref: string) {
+  return [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
   { label: 'My Tasks', icon: SquareCheckBig, to: '/dashboard/my-tasks' },
-  { label: 'Boards', icon: Columns3, to: '/dashboard/boards/demo-board', activePath: '/dashboard/boards/:boardId' },
+    { label: 'Boards', icon: Columns3, to: boardHref, activePath: '/dashboard/boards/:boardId' },
   { label: 'Members', icon: Users, to: '/dashboard/members' },
   { label: 'Workspaces', icon: FolderKanban, to: '/dashboard/workspaces' },
   { label: 'Activity', icon: Activity, to: '/dashboard/activity' },
   { label: 'Profile', icon: UserRound, to: '/dashboard/profile' },
   { label: 'Settings', icon: Settings, to: '/dashboard/settings' },
-]
+  ]
+}
 
 function Sidebar() {
   const location = useLocation()
+  const { data: workspaces } = useQuery({
+    queryKey: ['workspaces'],
+    queryFn: getWorkspaces,
+  })
+  const selectedWorkspaceId = workspaces?.[0]?._id
+  const { data: boards } = useQuery({
+    queryKey: ['boards', selectedWorkspaceId],
+    queryFn: () => getBoards(selectedWorkspaceId as string),
+    enabled: Boolean(selectedWorkspaceId),
+  })
+  const selectedBoardId = boards?.[0]?._id
+  const boardHref = selectedBoardId ? `/dashboard/boards/${selectedBoardId}` : '/dashboard/workspaces'
+  const navigationItems = getNavigationItems(boardHref)
 
   return (
     <aside className="fixed bottom-0 left-0 top-16 z-40 hidden w-[280px] border-r border-slate-200 bg-white shadow-sm md:flex md:flex-col">
@@ -41,13 +59,25 @@ function Sidebar() {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
-        >
-          <Plus className="h-4 w-4" />
-          New Task
-        </button>
+        {selectedBoardId ? (
+          <Link
+            to={`/dashboard/boards/${selectedBoardId}`}
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
+          >
+            <Plus className="h-4 w-4" />
+            New Task
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            title="Create a board before adding tasks."
+            className="mt-4 inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white opacity-60 shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            New Task
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 space-y-1 px-4">

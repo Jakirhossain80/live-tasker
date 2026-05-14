@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 type TaskCardProps = {
+  taskId?: string
+  href?: string
   title: string
   description: string
   label: string
@@ -12,6 +14,8 @@ type TaskCardProps = {
 }
 
 function TaskCard({
+  taskId,
+  href,
   title,
   description,
   label,
@@ -20,9 +24,11 @@ function TaskCard({
   iconClassName,
   comments,
 }: TaskCardProps) {
+  const taskHref = href ?? (taskId ? `/dashboard/tasks/${taskId}` : '/dashboard/my-tasks')
+
   return (
     <Link
-      to="/dashboard/tasks/demo-task"
+      to={taskHref}
       className="block rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow"
     >
       <div className="flex items-start gap-4">

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 type StatsCardProps = {
   title: string
-  value: string
+  value: number
   badge: string
   icon: ReactNode
   accentClassName: string

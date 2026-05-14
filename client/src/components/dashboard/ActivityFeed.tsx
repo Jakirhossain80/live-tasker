@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom'
+
 type ActivityItem = {
-  id: number
+  id: string
   user: string
   action: string
   time: string
@@ -8,9 +10,10 @@ type ActivityItem = {
 
 type ActivityFeedProps = {
   activities: ActivityItem[]
+  olderActivityHref?: string
 }
 
-function ActivityFeed({ activities }: ActivityFeedProps) {
+function ActivityFeed({ activities, olderActivityHref = '/dashboard/activity' }: ActivityFeedProps) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-5 flex items-center justify-between">
@@ -41,12 +44,12 @@ function ActivityFeed({ activities }: ActivityFeedProps) {
         ))}
       </div>
 
-      <button
-        type="button"
-        className="mt-6 w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+      <Link
+        to={olderActivityHref}
+        className="mt-6 inline-flex w-full justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
         Load Older Activity
-      </button>
+      </Link>
     </section>
   )
 }

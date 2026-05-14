@@ -20,6 +20,16 @@ function syncSocketAuth() {
   setSocketAuth(useAuthStore.getState().accessToken)
 }
 
+function connectAuthenticatedSocket() {
+  syncSocketAuth()
+
+  if (!currentAuthToken || socket.connected || socket.active) {
+    return
+  }
+
+  socket.connect()
+}
+
 useAuthStore.subscribe((state, previousState) => {
   if (state.accessToken === previousState.accessToken) {
     return
@@ -32,10 +42,10 @@ useAuthStore.subscribe((state, previousState) => {
     return
   }
 
-  if (connectionConsumers > 0 && (socket.connected || socket.active)) {
+  if (socket.connected || socket.active) {
     socket.disconnect()
     socket.connect()
-  } else if (connectionConsumers > 0) {
+  } else {
     socket.connect()
   }
 })
@@ -50,21 +60,13 @@ export type TaskMovedPayload = {
 
 export function connectSocket() {
   connectionConsumers += 1
-  syncSocketAuth()
-
-  if (!currentAuthToken) {
-    return
-  }
-
-  if (!socket.connected && !socket.active) {
-    socket.connect()
-  }
+  connectAuthenticatedSocket()
 }
 
 export function disconnectSocket() {
   connectionConsumers = Math.max(0, connectionConsumers - 1)
 
-  if (connectionConsumers === 0) {
+  if (!useAuthStore.getState().accessToken && connectionConsumers === 0) {
     socket.disconnect()
   }
 }

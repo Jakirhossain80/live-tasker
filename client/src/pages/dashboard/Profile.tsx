@@ -8,36 +8,54 @@ import {
   Pencil,
   UserPlus,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import ProfileActivityCard from '../../components/profile/ProfileActivityCard'
 import ProfileHeader from '../../components/profile/ProfileHeader'
 import ProfileInfoCard from '../../components/profile/ProfileInfoCard'
 import ProfileQuickActions from '../../components/profile/ProfileQuickActions'
 import ProfileStats from '../../components/profile/ProfileStats'
+import { useAuthStore } from '../../store/auth.store'
 import type { ProfileActivity } from '../../components/profile/ProfileActivityCard'
 import type { ProfileHeaderData } from '../../components/profile/ProfileHeader'
 import type { ProfileInfoItem } from '../../components/profile/ProfileInfoCard'
 import type { ProfileQuickAction } from '../../components/profile/ProfileQuickActions'
 import type { ProfileStat } from '../../components/profile/ProfileStats'
 
-const profile: ProfileHeaderData = {
-  name: 'Sarah Jenkins',
-  title: 'Senior Product Designer',
-  email: 's.jenkins@livetasker.com',
-  initials: 'SJ',
-  workspaceRole: 'ADMIN',
-  bio: 'Senior Product Designer passionate about building scalable design systems and fostering collaborative team environments at LiveTasker.',
+const NOT_PROVIDED = 'Not provided'
+
+function getDisplayValue(value?: string | null) {
+  const trimmedValue = value?.trim()
+
+  return trimmedValue || NOT_PROVIDED
 }
 
-const profileDetails: ProfileInfoItem[] = [
-  { label: 'Full Name', value: 'Sarah Jenkins' },
-  { label: 'Email', value: 's.jenkins@livetasker.com' },
-  { label: 'Job Title', value: 'Senior Product Designer' },
-  { label: 'Timezone', value: 'PST (UTC-8)' },
-  { label: 'Joined Date', value: 'Oct 2023' },
-  { label: 'Workspace Role', value: 'Primary Administrator' },
-]
+function getInitials(name?: string | null, email?: string | null) {
+  const trimmedName = name?.trim()
 
-const stats: ProfileStat[] = [
+  if (trimmedName) {
+    const initials = trimmedName
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase()
+
+    if (initials) {
+      return initials
+    }
+  }
+
+  const trimmedEmail = email?.trim()
+
+  if (trimmedEmail) {
+    return trimmedEmail[0].toUpperCase()
+  }
+
+  return 'LT'
+}
+
+// Demo stats are intentionally separate from authenticated user identity until profile stats are API-backed.
+const demoStats: ProfileStat[] = [
   {
     label: 'Assigned Tasks',
     value: '42',
@@ -88,12 +106,43 @@ const activities: ProfileActivity[] = [
 ]
 
 const quickActions: ProfileQuickAction[] = [
-  { label: 'Edit Profile', icon: Pencil },
-  { label: 'Change Password', icon: KeyRound },
-  { label: 'Manage Notifications', icon: Bell },
+  { id: 'edit-profile', label: 'Edit Profile', icon: Pencil },
+  { id: 'change-password', label: 'Change Password', icon: KeyRound },
+  { id: 'manage-notifications', label: 'Manage Notifications', icon: Bell },
 ]
 
 function Profile() {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const name = getDisplayValue(user?.name)
+  const email = getDisplayValue(user?.email)
+
+  const profile: ProfileHeaderData = {
+    name,
+    title: NOT_PROVIDED,
+    email,
+    initials: getInitials(user?.name, user?.email),
+    workspaceRole: NOT_PROVIDED,
+    bio: NOT_PROVIDED,
+  }
+
+  const profileDetails: ProfileInfoItem[] = [
+    { label: 'Full Name', value: name },
+    { label: 'Email', value: email },
+    { label: 'Job Title', value: NOT_PROVIDED },
+    { label: 'Timezone', value: NOT_PROVIDED },
+    { label: 'Joined Date', value: NOT_PROVIDED },
+    { label: 'Workspace Role', value: NOT_PROVIDED },
+  ]
+
+  function handleProfileSettingsNavigation() {
+    navigate('/dashboard/settings')
+  }
+
+  function handleViewAllActivity() {
+    navigate('/dashboard/activity')
+  }
+
   return (
     <div className="mx-auto max-w-[1440px] space-y-6">
       <section>
@@ -105,14 +154,14 @@ function Profile() {
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-6">
-          <ProfileHeader profile={profile} />
-          <ProfileStats stats={stats} />
-          <ProfileActivityCard activities={activities} />
+          <ProfileHeader profile={profile} onEditProfile={handleProfileSettingsNavigation} />
+          <ProfileStats stats={demoStats} />
+          <ProfileActivityCard activities={activities} onViewAll={handleViewAllActivity} />
         </div>
 
         <aside className="space-y-6">
           <ProfileInfoCard details={profileDetails} />
-          <ProfileQuickActions actions={quickActions} />
+          <ProfileQuickActions actions={quickActions} onActionClick={handleProfileSettingsNavigation} />
         </aside>
       </section>
     </div>

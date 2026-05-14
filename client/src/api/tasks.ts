@@ -71,6 +71,12 @@ export async function getTasks(boardId: string) {
   return response.data.data.tasks
 }
 
+export async function getTaskById(taskId: string) {
+  const response = await http.get<ApiResponse<TaskData>>(`/tasks/${taskId}`)
+
+  return response.data.data.task
+}
+
 export async function createTask(boardId: string, payload: CreateTaskPayload) {
   if (!isValidBoardId(boardId)) {
     throw new Error('Invalid board id.')

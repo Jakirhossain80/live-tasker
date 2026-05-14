@@ -1,6 +1,7 @@
 import { Filter, Plus } from 'lucide-react'
+import type { OnlineUser } from '../../hooks/useOnlineUsers'
 
-const members = [
+const fallbackMembers = [
   { name: 'Sarah Chen', initials: 'SC', className: 'bg-indigo-600' },
   { name: 'Alex Rivera', initials: 'AR', className: 'bg-emerald-600' },
   { name: 'Mina Lee', initials: 'ML', className: 'bg-rose-600' },
@@ -9,9 +10,22 @@ const members = [
 type KanbanHeaderProps = {
   title?: string
   description?: string
+  onlineUsers?: OnlineUser[]
 }
 
-function KanbanHeader({ title = 'Kanban Board', description }: KanbanHeaderProps) {
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function KanbanHeader({ title = 'Kanban Board', description, onlineUsers = [] }: KanbanHeaderProps) {
+  const displayedOnlineUsers = onlineUsers.slice(0, 4)
+  const hiddenOnlineUserCount = Math.max(0, onlineUsers.length - displayedOnlineUsers.length)
+
   return (
     <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-wrap items-center gap-4">
@@ -21,21 +35,34 @@ function KanbanHeader({ title = 'Kanban Board', description }: KanbanHeaderProps
         </div>
 
         <div className="flex -space-x-2">
-          {members.map((member) => (
+          {displayedOnlineUsers.length > 0
+            ? displayedOnlineUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="relative flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-indigo-600 text-xs font-semibold text-white shadow-sm"
+                  title={`${user.name} is online`}
+                >
+                  {getInitials(user.name)}
+                  <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+                </div>
+              ))
+            : fallbackMembers.map((member) => (
+                <div
+                  key={member.name}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-semibold text-white shadow-sm ${member.className}`}
+                  title={member.name}
+                >
+                  {member.initials}
+                </div>
+              ))}
+          {hiddenOnlineUserCount > 0 ? (
             <div
-              key={member.name}
-              className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-semibold text-white shadow-sm ${member.className}`}
-              title={member.name}
+              className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-xs font-semibold text-slate-600 shadow-sm"
+              title={`${hiddenOnlineUserCount} more online`}
             >
-              {member.initials}
+              +{hiddenOnlineUserCount}
             </div>
-          ))}
-          <div
-            className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-xs font-semibold text-slate-600 shadow-sm"
-            title="3 more members"
-          >
-            +3
-          </div>
+          ) : null}
         </div>
       </div>
 

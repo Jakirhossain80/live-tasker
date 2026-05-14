@@ -16,7 +16,7 @@ import { isAxiosError } from 'axios'
 import { KanbanSquare, Plus } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getBoardById, isValidBoardId, type BoardColumn } from '../../api/boards'
+import { getBoardById, isValidBoardId, type Board, type BoardColumn } from '../../api/boards'
 import {
   createTask,
   deleteTask,
@@ -36,7 +36,9 @@ import KanbanColumn, { type KanbanTask } from '../../components/kanban/KanbanCol
 import CreateTaskModal from '../../components/kanban/CreateTaskModal'
 import EditTaskModal from '../../components/kanban/EditTaskModal'
 import KanbanHeader from '../../components/kanban/KanbanHeader'
-import { connectSocket, disconnectSocket, emitTaskMoved, socket, type TaskMovedPayload } from '../../socket/socket'
+import { useOnlineUsers } from '../../hooks/useOnlineUsers'
+import { useSocket } from '../../hooks/useSocket'
+import { emitTaskMoved, type TaskMovedPayload } from '../../socket/socket'
 
 type KanbanColumnData = {
   id: string
@@ -45,6 +47,20 @@ type KanbanColumnData = {
   accentClassName: string
   tasks: KanbanTask[]
 }
+
+type TaskCreatedPayload = {
+  task: Task
+}
+
+type TaskUpdatedPayload = {
+  task: Task
+}
+
+type BackendTaskMovedPayload = {
+  task: Task
+}
+
+type TaskMovedEventPayload = TaskMovedPayload | BackendTaskMovedPayload
 
 const accentClassNames = [
   'bg-slate-400',
@@ -210,8 +226,74 @@ function applyTaskMovedEvent(tasks: Task[], payload: TaskMovedPayload) {
   return tasks.map((task) => reorderedTaskMap.get(task._id) ?? task)
 }
 
+function applyMovedTask(tasks: Task[], nextTask: Task) {
+  const currentTask = tasks.find((task) => task._id === nextTask._id)
+
+  if (!currentTask) {
+    return upsertTask(tasks, nextTask)
+  }
+
+  const sourceColumnId = currentTask.status
+  const targetColumnId = nextTask.status
+  const sourceColumnTasks = tasks
+    .filter((task) => task.status === sourceColumnId && task._id !== nextTask._id)
+    .sort((firstTask, secondTask) => firstTask.order - secondTask.order)
+  const targetColumnTasks = tasks
+    .filter((task) => task.status === targetColumnId && task._id !== nextTask._id)
+    .sort((firstTask, secondTask) => firstTask.order - secondTask.order)
+  const insertIndex = Math.max(0, Math.min(nextTask.order, targetColumnTasks.length))
+  const nextTargetColumnTasks = [
+    ...targetColumnTasks.slice(0, insertIndex),
+    nextTask,
+    ...targetColumnTasks.slice(insertIndex),
+  ]
+  const reorderedTaskMap = new Map<string, Task>()
+
+  if (sourceColumnId !== targetColumnId) {
+    sourceColumnTasks.forEach((task, order) => {
+      reorderedTaskMap.set(task._id, { ...task, order })
+    })
+  }
+
+  nextTargetColumnTasks.forEach((task, order) => {
+    reorderedTaskMap.set(task._id, { ...task, status: targetColumnId, order })
+  })
+
+  return tasks.map((task) => reorderedTaskMap.get(task._id) ?? task)
+}
+
+function upsertTask(tasks: Task[], nextTask: Task) {
+  const existingTaskIndex = tasks.findIndex((task) => task._id === nextTask._id)
+
+  if (existingTaskIndex === -1) {
+    return [...tasks, nextTask]
+  }
+
+  return tasks.map((task) => (task._id === nextTask._id ? nextTask : task))
+}
+
+function getTaskBoardId(task: Task) {
+  return typeof task.board === 'string' ? task.board : task.board._id
+}
+
+function getBoardWorkspaceId(board?: Board) {
+  if (!board) {
+    return undefined
+  }
+
+  return typeof board.workspace === 'string' ? board.workspace : board.workspace._id
+}
+
+function isBackendTaskMovedPayload(payload: TaskMovedEventPayload): payload is BackendTaskMovedPayload {
+  return 'task' in payload
+}
+
 function getTaskMovedSignature(payload: TaskMovedPayload) {
-  return `${payload.boardId}:${payload.taskId}:${payload.fromStatus}:${payload.toStatus}:${payload.order}`
+  return getTaskMoveSignature(payload.boardId, payload.taskId, payload.toStatus, payload.order)
+}
+
+function getTaskMoveSignature(boardId: string, taskId: string, status: string, order: number) {
+  return `${boardId}:${taskId}:${status}:${order}`
 }
 
 function getTaskListSignature(tasks: Task[]) {
@@ -248,8 +330,10 @@ function getErrorMessage(error: unknown) {
 function ProjectBoard() {
   const { boardId } = useParams()
   const hasValidBoardId = isValidBoardId(boardId)
+  const hasJoinableBoardId = Boolean(boardId && boardId !== 'demo-board' && hasValidBoardId)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { socket, isConnected } = useSocket()
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false)
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false)
   const [selectedColumnId, setSelectedColumnId] = useState('')
@@ -294,6 +378,8 @@ function ProjectBoard() {
     enabled: hasValidBoardId,
   })
   const fetchedTasksSignature = useMemo(() => getTaskListSignature(fetchedTasks), [fetchedTasks])
+  const workspaceId = getBoardWorkspaceId(board)
+  const onlineUsers = useOnlineUsers(workspaceId)
 
   useEffect(() => {
     setLocalTasks((currentTasks) =>
@@ -302,15 +388,65 @@ function ProjectBoard() {
   }, [fetchedTasks, fetchedTasksSignature])
 
   useEffect(() => {
-    if (!hasValidBoardId || !boardId) {
+    if (!hasJoinableBoardId || !boardId || !isConnected) {
       return
     }
 
-    function joinCurrentBoard() {
-      socket.emit('joinBoard', { boardId })
+    socket.emit('joinBoard', { boardId })
+
+    return () => {
+      if (socket.connected) {
+        socket.emit('leaveBoard', { boardId })
+      }
+    }
+  }, [boardId, hasJoinableBoardId, isConnected, socket])
+
+  useEffect(() => {
+    if (!hasJoinableBoardId || !boardId) {
+      return
     }
 
-    function handleTaskMoved(payload: TaskMovedPayload) {
+    function handleTaskCreated(payload: TaskCreatedPayload) {
+      if (getTaskBoardId(payload.task) !== boardId) {
+        return
+      }
+
+      setLocalTasks((currentTasks) => upsertTask(currentTasks, payload.task))
+      queryClient.setQueryData<Task[]>(['tasks', boardId], (currentTasks = []) => upsertTask(currentTasks, payload.task))
+    }
+
+    function handleTaskUpdated(payload: TaskUpdatedPayload) {
+      if (getTaskBoardId(payload.task) !== boardId) {
+        return
+      }
+
+      setLocalTasks((currentTasks) => upsertTask(currentTasks, payload.task))
+      queryClient.setQueryData<Task[]>(['tasks', boardId], (currentTasks = []) => upsertTask(currentTasks, payload.task))
+    }
+
+    function handleTaskMoved(payload: TaskMovedEventPayload) {
+      if (isBackendTaskMovedPayload(payload)) {
+        if (getTaskBoardId(payload.task) !== boardId) {
+          return
+        }
+
+        const moveSignature = getTaskMoveSignature(boardId, payload.task._id, payload.task.status, payload.task.order)
+
+        if (recentLocalMoveSignaturesRef.current.has(moveSignature)) {
+          recentLocalMoveSignaturesRef.current.delete(moveSignature)
+          queryClient.setQueryData<Task[]>(['tasks', boardId], (currentTasks = []) =>
+            applyMovedTask(currentTasks, payload.task),
+          )
+          return
+        }
+
+        setLocalTasks((currentTasks) => applyMovedTask(currentTasks, payload.task))
+        queryClient.setQueryData<Task[]>(['tasks', boardId], (currentTasks = []) =>
+          applyMovedTask(currentTasks, payload.task),
+        )
+        return
+      }
+
       if (payload.boardId !== boardId) {
         return
       }
@@ -323,29 +459,25 @@ function ProjectBoard() {
       }
 
       setLocalTasks((currentTasks) => applyTaskMovedEvent(currentTasks, payload))
+      queryClient.setQueryData<Task[]>(['tasks', boardId], (currentTasks = []) => applyTaskMovedEvent(currentTasks, payload))
     }
 
-    socket.on('connect', joinCurrentBoard)
+    socket.on('taskCreated', handleTaskCreated)
+    socket.on('taskUpdated', handleTaskUpdated)
     socket.on('taskMoved', handleTaskMoved)
-    connectSocket()
-
-    if (socket.connected) {
-      joinCurrentBoard()
-    }
 
     return () => {
-      socket.off('connect', joinCurrentBoard)
+      socket.off('taskCreated', handleTaskCreated)
+      socket.off('taskUpdated', handleTaskUpdated)
       socket.off('taskMoved', handleTaskMoved)
-      socket.emit('leaveBoard', { boardId })
 
       recentLocalMoveTimeoutsRef.current.forEach((timeoutId) => {
         window.clearTimeout(timeoutId)
       })
       recentLocalMoveTimeoutsRef.current = []
       recentLocalMoveSignaturesRef.current.clear()
-      disconnectSocket()
     }
-  }, [boardId, hasValidBoardId])
+  }, [boardId, hasJoinableBoardId, queryClient, socket])
 
   const createTaskMutation = useMutation({
     mutationFn: (payload: CreateTaskPayload) => createTask(boardId as string, payload),
@@ -598,7 +730,7 @@ function ProjectBoard() {
 
   return (
     <div className="mx-auto flex max-w-full flex-col gap-6">
-      <KanbanHeader title={board.name} description={board.description} />
+      <KanbanHeader title={board.name} description={board.description} onlineUsers={onlineUsers} />
 
       {deleteTaskErrorMessage ? (
         <ErrorState title="Could not delete task" message={deleteTaskErrorMessage} />

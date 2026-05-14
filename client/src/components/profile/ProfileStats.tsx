@@ -1,5 +1,6 @@
-import { Boxes, CheckCircle2, ClipboardList } from 'lucide-react'
+import { BarChart3 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import EmptyState from '../common/EmptyState'
 
 export type ProfileStat = {
   label: string
@@ -14,36 +15,19 @@ type ProfileStatsProps = {
 }
 
 function ProfileStats({ stats }: ProfileStatsProps) {
-  const fallbackStats =
-    stats.length > 0
-      ? stats
-      : [
-          {
-            label: 'Assigned Tasks',
-            value: '42',
-            icon: ClipboardList,
-            iconClassName: 'bg-indigo-50 text-indigo-600',
-            hoverBorderClassName: 'hover:border-indigo-300',
-          },
-          {
-            label: 'Completed Tasks',
-            value: '128',
-            icon: CheckCircle2,
-            iconClassName: 'bg-emerald-50 text-emerald-600',
-            hoverBorderClassName: 'hover:border-emerald-300',
-          },
-          {
-            label: 'Workspaces',
-            value: '4',
-            icon: Boxes,
-            iconClassName: 'bg-amber-50 text-amber-600',
-            hoverBorderClassName: 'hover:border-amber-300',
-          },
-        ]
+  if (stats.length === 0) {
+    return (
+      <EmptyState
+        icon={BarChart3}
+        title="No profile stats yet"
+        message="Task and workspace stats will appear here when they are available."
+      />
+    )
+  }
 
   return (
     <section className="grid gap-4 md:grid-cols-3">
-      {fallbackStats.map((stat) => {
+      {stats.map((stat) => {
         const Icon = stat.icon
 
         return (

@@ -1,6 +1,7 @@
 import { MessageSquare, Paperclip, Send } from 'lucide-react'
+import type { Comment } from '../../api/comments'
 
-const comments = [
+const fallbackComments = [
   {
     id: 1,
     author: 'Sarah Chen',
@@ -18,7 +19,35 @@ const comments = [
   },
 ]
 
-function TaskDiscussion() {
+type TaskDiscussionProps = {
+  comments?: Comment[]
+  isLoading?: boolean
+  errorMessage?: string
+}
+
+function getAuthorName(comment: Comment) {
+  return typeof comment.author === 'string' ? 'Workspace member' : comment.author.name
+}
+
+function getAuthorInitials(comment: Comment) {
+  return getAuthorName(comment)
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function formatCommentTime(createdAt: string) {
+  return new Intl.DateTimeFormat('en', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(createdAt))
+}
+
+function TaskDiscussion({ comments, isLoading = false, errorMessage }: TaskDiscussionProps) {
+  const hasLiveComments = Array.isArray(comments)
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="flex items-center gap-3">
@@ -29,30 +58,67 @@ function TaskDiscussion() {
       </div>
 
       <div className="mt-5 space-y-5">
-        {comments.map((comment) => (
-          <article key={comment.id} className="flex gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white">
-              {comment.initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <h4 className="text-sm font-semibold text-slate-950">{comment.author}</h4>
-                  <span className="text-xs text-slate-400">{comment.time}</span>
+        {isLoading ? (
+          <p className="text-sm font-medium text-slate-500">Loading comments...</p>
+        ) : errorMessage ? (
+          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+            {errorMessage}
+          </p>
+        ) : hasLiveComments ? (
+          comments.length === 0 ? (
+            <p className="text-sm font-medium text-slate-500">No comments yet.</p>
+          ) : (
+            comments.map((comment) => (
+              <article key={comment._id} className="flex gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white">
+                  {getAuthorInitials(comment)}
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{comment.message}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <h4 className="text-sm font-semibold text-slate-950">{getAuthorName(comment)}</h4>
+                      <span className="text-xs text-slate-400">{formatCommentTime(comment.createdAt)}</span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{comment.content}</p>
+                  </div>
+                  <div className="mt-2 flex items-center gap-4 pl-1">
+                    <button type="button" className="text-xs font-semibold text-slate-500 hover:text-indigo-700">
+                      Reply
+                    </button>
+                    <button type="button" className="text-xs font-semibold text-slate-500 hover:text-indigo-700">
+                      Like
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))
+          )
+        ) : (
+          fallbackComments.map((comment) => (
+            <article key={comment.id} className="flex gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white">
+                {comment.initials}
               </div>
-              <div className="mt-2 flex items-center gap-4 pl-1">
-                <button type="button" className="text-xs font-semibold text-slate-500 hover:text-indigo-700">
-                  Reply
-                </button>
-                <button type="button" className="text-xs font-semibold text-slate-500 hover:text-indigo-700">
-                  Like
-                </button>
+              <div className="min-w-0 flex-1">
+                <div className="rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <h4 className="text-sm font-semibold text-slate-950">{comment.author}</h4>
+                    <span className="text-xs text-slate-400">{comment.time}</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{comment.message}</p>
+                </div>
+                <div className="mt-2 flex items-center gap-4 pl-1">
+                  <button type="button" className="text-xs font-semibold text-slate-500 hover:text-indigo-700">
+                    Reply
+                  </button>
+                  <button type="button" className="text-xs font-semibold text-slate-500 hover:text-indigo-700">
+                    Like
+                  </button>
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          ))
+        )}
       </div>
 
       <div className="mt-6 flex gap-3 border-t border-slate-200 pt-5">

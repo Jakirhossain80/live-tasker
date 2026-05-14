@@ -19,6 +19,10 @@ function TopNavbar() {
     navigate('/login', { replace: true })
   }
 
+  function handleProfileNavigation() {
+    navigate('/dashboard/profile')
+  }
+
   return (
     <header className="fixed left-0 right-0 top-0 z-50 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/90 px-4 shadow-sm backdrop-blur sm:px-6 lg:px-8">
       <div className="flex items-center gap-3">
@@ -60,9 +64,14 @@ function TopNavbar() {
           <Grid3X3 className="h-5 w-5" />
         </button>
 
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
+        <button
+          type="button"
+          onClick={handleProfileNavigation}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700"
+          aria-label="Open profile"
+        >
           {initials}
-        </div>
+        </button>
 
         <button
           type="button"

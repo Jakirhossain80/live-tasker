@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { getCurrentUser, refreshAccessToken } from '../../api/auth'
+import '../../socket/socket'
 import { useAuthStore } from '../../store/auth.store'
 
 type AuthBootstrapProps = {

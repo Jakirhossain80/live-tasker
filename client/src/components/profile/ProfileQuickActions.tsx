@@ -2,23 +2,25 @@ import { Bell, ChevronRight, KeyRound, Pencil } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export type ProfileQuickAction = {
+  id: 'edit-profile' | 'change-password' | 'manage-notifications'
   label: string
   icon: LucideIcon
 }
 
 type ProfileQuickActionsProps = {
   actions: ProfileQuickAction[]
+  onActionClick: (action: ProfileQuickAction) => void
 }
 
-function ProfileQuickActions({ actions }: ProfileQuickActionsProps) {
+function ProfileQuickActions({ actions, onActionClick }: ProfileQuickActionsProps) {
   const fallbackActions =
     actions.length > 0
       ? actions
       : [
-          { label: 'Edit Profile', icon: Pencil },
-          { label: 'Change Password', icon: KeyRound },
-          { label: 'Manage Notifications', icon: Bell },
-        ]
+          { id: 'edit-profile', label: 'Edit Profile', icon: Pencil },
+          { id: 'change-password', label: 'Change Password', icon: KeyRound },
+          { id: 'manage-notifications', label: 'Manage Notifications', icon: Bell },
+        ] satisfies ProfileQuickAction[]
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -32,6 +34,7 @@ function ProfileQuickActions({ actions }: ProfileQuickActionsProps) {
             <button
               key={action.label}
               type="button"
+              onClick={() => onActionClick(action)}
               className="group flex w-full items-center gap-3 rounded-lg border border-slate-200 p-3 text-left transition hover:bg-slate-50"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:text-indigo-600">

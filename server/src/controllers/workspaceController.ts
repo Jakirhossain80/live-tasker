@@ -108,8 +108,15 @@ const validateUpdateWorkspaceBody = (body: Request["body"]) => {
 };
 
 const validateMemberBody = (body: Request["body"]) => {
-  if (!isStringWithValue(body.userId)) {
-    return "User id is required";
+  const hasUserId = isStringWithValue(body.userId);
+  const hasEmail = isStringWithValue(body.email);
+
+  if (!hasUserId && !hasEmail) {
+    return "User id or email is required";
+  }
+
+  if (hasUserId && hasEmail) {
+    return "Provide either user id or email, not both";
   }
 
   if (body.role !== undefined && !isValidMemberRole(body.role)) {
@@ -238,6 +245,7 @@ const addMember = asyncHandler(async (req, res) => {
     workspaceId: getRouteParam(req, "workspaceId"),
     actorId: getAuthUserId(req),
     userId: req.body.userId,
+    email: req.body.email,
     role: req.body.role || "member",
   });
 

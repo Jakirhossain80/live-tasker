@@ -23,7 +23,8 @@ interface UpdateWorkspaceInput {
 interface AddMemberInput {
   workspaceId: string;
   actorId: string;
-  userId: string;
+  userId?: string;
+  email?: string;
   role: ManageableWorkspaceMemberRole;
 }
 
@@ -184,23 +185,38 @@ const addMember = async ({
   workspaceId,
   actorId,
   userId,
+  email,
   role,
 }: AddMemberInput) => {
-  validateObjectId(userId, "user id");
-
   const workspace = await getWorkspaceForAdmin(workspaceId, actorId);
-  const user = await User.findById(userId);
+  const normalizedEmail = email?.trim().toLowerCase();
 
-  if (!user || !user.isActive) {
-    throw createHttpError("User not found", 404);
+  let user;
+
+  if (userId) {
+    validateObjectId(userId, "user id");
+    user = await User.findById(userId);
+  } else if (normalizedEmail) {
+    user = await User.findOne({ email: normalizedEmail });
+  } else {
+    throw createHttpError("User id or email is required", 400);
   }
 
-  if (getMember(workspace, userId)) {
+  if (!user || !user.isActive) {
+    throw createHttpError(
+      normalizedEmail ? "User with this email was not found" : "User not found",
+      404,
+    );
+  }
+
+  const memberUserId = String((user as any)._id);
+
+  if (getMember(workspace, memberUserId)) {
     throw createHttpError("User is already a workspace member", 409);
   }
 
   workspace.members.push({
-    user: new mongoose.Types.ObjectId(userId),
+    user: (user as any)._id,
     role,
     joinedAt: new Date(),
   });

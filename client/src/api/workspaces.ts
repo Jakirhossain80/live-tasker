@@ -45,7 +45,7 @@ export type UpdateWorkspacePayload = Partial<{
 }>
 
 export type AddWorkspaceMemberPayload = {
-  userId: string
+  email: string
   role?: ManageableWorkspaceMemberRole
 }
 

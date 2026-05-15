@@ -1,9 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { UserPlus, Users } from 'lucide-react'
-import { getWorkspaceById, getWorkspaces, type Workspace, type WorkspaceMemberRole } from '../../api/workspaces'
+import {
+  addWorkspaceMember,
+  getWorkspaceById,
+  getWorkspaces,
+  type Workspace,
+  type WorkspaceMemberRole,
+} from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
 import LoadingState from '../../components/common/LoadingState'
+import InviteMemberModal, { type InviteMemberPayload } from '../../components/members/InviteMemberModal'
 import MembersStats from '../../components/members/MembersStats'
 import MembersTable from '../../components/members/MembersTable'
 import type { Member, MemberRole } from '../../components/members/MemberTableRow'
@@ -71,7 +80,19 @@ function mapWorkspaceMembers(workspace: Workspace): Member[] {
   })
 }
 
+function getErrorMessage(error: unknown) {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || error.message
+  }
+
+  return error instanceof Error ? error.message : 'Could not add workspace member.'
+}
+
 function Members() {
+  const queryClient = useQueryClient()
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [inviteErrorMessage, setInviteErrorMessage] = useState<string>()
+
   const {
     data: workspaces,
     isLoading: areWorkspacesLoading,
@@ -94,6 +115,39 @@ function Members() {
     queryKey: ['workspace', selectedWorkspaceId],
     queryFn: () => getWorkspaceById(selectedWorkspaceId as string),
     enabled: Boolean(selectedWorkspaceId),
+  })
+
+  const addMemberMutation = useMutation({
+    mutationFn: (payload: InviteMemberPayload) => {
+      if (!selectedWorkspaceId) {
+        throw new Error('Select a workspace before adding members.')
+      }
+
+      return addWorkspaceMember(selectedWorkspaceId, payload)
+    },
+    onSuccess: async (updatedWorkspace) => {
+      queryClient.setQueryData(['workspace', updatedWorkspace._id], updatedWorkspace)
+      queryClient.setQueryData<Workspace[]>(['workspaces'], (currentWorkspaces) => {
+        if (!currentWorkspaces) {
+          return currentWorkspaces
+        }
+
+        return currentWorkspaces.map((currentWorkspace) =>
+          currentWorkspace._id === updatedWorkspace._id ? updatedWorkspace : currentWorkspace,
+        )
+      })
+
+      setIsInviteModalOpen(false)
+      setInviteErrorMessage(undefined)
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['workspace', updatedWorkspace._id] }),
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+      ])
+    },
+    onError: (mutationError) => {
+      setInviteErrorMessage(getErrorMessage(mutationError))
+    },
   })
 
   const isLoading = areWorkspacesLoading || isWorkspaceLoading
@@ -141,6 +195,23 @@ function Members() {
   const members = mapWorkspaceMembers(workspace)
   const adminMembers = members.filter((member) => member.role === 'Owner' || member.role === 'Admin').length
 
+  function openInviteModal() {
+    setInviteErrorMessage(undefined)
+    setIsInviteModalOpen(true)
+  }
+
+  function closeInviteModal() {
+    if (!addMemberMutation.isPending) {
+      setIsInviteModalOpen(false)
+      setInviteErrorMessage(undefined)
+    }
+  }
+
+  function handleInviteMember(payload: InviteMemberPayload) {
+    setInviteErrorMessage(undefined)
+    addMemberMutation.mutate(payload)
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -153,6 +224,7 @@ function Members() {
 
         <button
           type="button"
+          onClick={openInviteModal}
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700"
         >
           <UserPlus className="h-4 w-4" />
@@ -176,6 +248,14 @@ function Members() {
           <UpgradeSeatsCard />
         </aside>
       </section>
+
+      <InviteMemberModal
+        isOpen={isInviteModalOpen}
+        isSubmitting={addMemberMutation.isPending}
+        errorMessage={inviteErrorMessage}
+        onClose={closeInviteModal}
+        onSubmit={handleInviteMember}
+      />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ArrowUpDown, ClipboardList, FileText, ListFilter } from 'lucide-react'
-import { getBoards } from '../../api/boards'
+import { useMemo, useState } from 'react'
+import { getBoards, isValidBoardId } from '../../api/boards'
 import { getTasks, type Task, type TaskPriority } from '../../api/tasks'
 import { getWorkspaces } from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
@@ -12,12 +13,25 @@ import type { MyTask } from '../../components/tasks/MyTasksTableRow'
 import type { TaskPriority as UiTaskPriority } from '../../components/tasks/TaskPriorityBadge'
 
 const tabs = ['All Tasks', 'Today', 'Upcoming', 'Completed']
+const selectedWorkspaceStorageKey = 'livetasker:selectedWorkspaceId'
 
 const priorityLabels: Record<TaskPriority, UiTaskPriority> = {
   low: 'Low',
   medium: 'Medium',
   high: 'High',
   urgent: 'Urgent',
+}
+
+function getSavedWorkspaceId() {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  try {
+    return window.localStorage.getItem(selectedWorkspaceStorageKey) || undefined
+  } catch {
+    return undefined
+  }
 }
 
 function formatDueDate(dueDate?: string) {
@@ -54,6 +68,7 @@ function mapTasks(tasks: Task[], boardName: string, columns: { _id: string; titl
 }
 
 function MyTasks() {
+  const [savedWorkspaceId] = useState(() => getSavedWorkspaceId())
   const {
     data: workspaces,
     isLoading: areWorkspacesLoading,
@@ -65,7 +80,12 @@ function MyTasks() {
     queryFn: getWorkspaces,
   })
 
-  const selectedWorkspaceId = workspaces?.[0]?._id
+  const activeWorkspaces = useMemo(() => workspaces?.filter((workspace) => !workspace.isArchived) ?? [], [workspaces])
+  const selectedWorkspace = useMemo(
+    () => activeWorkspaces.find((workspace) => workspace._id === savedWorkspaceId) ?? activeWorkspaces[0],
+    [activeWorkspaces, savedWorkspaceId],
+  )
+  const selectedWorkspaceId = selectedWorkspace?._id
   const {
     data: boards,
     isLoading: areBoardsLoading,
@@ -78,7 +98,7 @@ function MyTasks() {
     enabled: Boolean(selectedWorkspaceId),
   })
 
-  const selectedBoard = boards?.[0]
+  const selectedBoard = boards?.find((board) => !board.isArchived && board._id !== 'demo-board' && isValidBoardId(board._id))
   const {
     data: backendTasks = [],
     isLoading: areTasksLoading,
@@ -123,7 +143,7 @@ function MyTasks() {
     )
   }
 
-  if (!workspaces || workspaces.length === 0) {
+  if (activeWorkspaces.length === 0) {
     return (
       <div className="mx-auto max-w-7xl">
         <EmptyState

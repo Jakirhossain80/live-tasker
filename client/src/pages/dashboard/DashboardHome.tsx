@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays, CheckCircle2, ClipboardList, Clock3, Palette, Plus, Rocket, Terminal } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getWorkspaceActivity, type ActivityLog } from '../../api/activity'
-import { getBoards } from '../../api/boards'
+import { getBoards, isValidBoardId } from '../../api/boards'
 import { getTasks, type Task } from '../../api/tasks'
 import { getWorkspaces } from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
@@ -16,7 +16,20 @@ import UpgradeCard from '../../components/dashboard/UpgradeCard'
 import { useSocket } from '../../hooks/useSocket'
 import { useAuthStore } from '../../store/auth.store'
 
-const dashboardRealtimeEvents = ['taskCreated', 'taskUpdated', 'taskMoved', 'commentAdded'] as const
+const dashboardRealtimeEvents = ['activityCreated', 'taskCreated', 'taskUpdated', 'taskMoved', 'commentAdded'] as const
+const selectedWorkspaceStorageKey = 'livetasker:selectedWorkspaceId'
+
+function getSavedWorkspaceId() {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  try {
+    return window.localStorage.getItem(selectedWorkspaceStorageKey) || undefined
+  } catch {
+    return undefined
+  }
+}
 
 function getTaskStatusLabel(task: Task, columns: { _id: string; title: string }[]) {
   const statusColumn = columns.find((column) => column._id === task.status)
@@ -25,15 +38,17 @@ function getTaskStatusLabel(task: Task, columns: { _id: string; title: string }[
 }
 
 function isCompletedTask(task: Task, columns: { _id: string; title: string }[]) {
-  const status = getTaskStatusLabel(task, columns).toLowerCase()
+  const doneColumn = columns.find((column) => column.title.toLowerCase() === 'done')
 
-  return ['done', 'completed', 'complete'].includes(status)
+  return doneColumn ? task.status === doneColumn._id : getTaskStatusLabel(task, columns).toLowerCase() === 'done'
 }
 
 function isInProgressTask(task: Task, columns: { _id: string; title: string }[]) {
-  const status = getTaskStatusLabel(task, columns).toLowerCase()
+  const inProgressColumn = columns.find((column) => column.title.toLowerCase() === 'in progress')
 
-  return status.includes('progress') || status === 'doing' || status === 'active'
+  return inProgressColumn
+    ? task.status === inProgressColumn._id
+    : getTaskStatusLabel(task, columns).toLowerCase() === 'in progress'
 }
 
 function formatDueDate(dueDate?: string) {
@@ -118,6 +133,7 @@ function getStats(tasks: Task[], columns: { _id: string; title: string }[]) {
 function DashboardHome() {
   const queryClient = useQueryClient()
   const { socket, isConnected } = useSocket()
+  const [savedWorkspaceId] = useState(() => getSavedWorkspaceId())
   const user = useAuthStore((state) => state.user)
   const displayName = user?.name || user?.email?.split('@')[0] || 'there'
   const {
@@ -131,7 +147,11 @@ function DashboardHome() {
     queryFn: getWorkspaces,
   })
 
-  const selectedWorkspace = workspaces?.[0]
+  const activeWorkspaces = useMemo(() => workspaces?.filter((workspace) => !workspace.isArchived) ?? [], [workspaces])
+  const selectedWorkspace = useMemo(
+    () => activeWorkspaces.find((workspace) => workspace._id === savedWorkspaceId) ?? activeWorkspaces[0],
+    [activeWorkspaces, savedWorkspaceId],
+  )
   const selectedWorkspaceId = selectedWorkspace?._id
   const {
     data: boards,
@@ -145,7 +165,7 @@ function DashboardHome() {
     enabled: Boolean(selectedWorkspaceId),
   })
 
-  const selectedBoard = boards?.[0]
+  const selectedBoard = boards?.find((board) => !board.isArchived && board._id !== 'demo-board' && isValidBoardId(board._id))
   const selectedBoardId = selectedBoard?._id
   const {
     data: backendTasks = [],
@@ -257,7 +277,7 @@ function DashboardHome() {
     )
   }
 
-  if (!workspaces || workspaces.length === 0) {
+  if (activeWorkspaces.length === 0) {
     return (
       <div className="mx-auto max-w-7xl">
         <EmptyState
@@ -271,6 +291,7 @@ function DashboardHome() {
 
   const boardColumns = selectedBoard?.columns ?? []
   const stats = getStats(backendTasks, boardColumns)
+  const pendingTasksCount = backendTasks.filter((task) => !isCompletedTask(task, boardColumns)).length
   const recentTasks = [...backendTasks]
     .sort((firstTask, secondTask) => getTaskSortTimestamp(secondTask) - getTaskSortTimestamp(firstTask))
     .slice(0, 3)
@@ -310,7 +331,9 @@ function DashboardHome() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-sm text-slate-500">You have 4 tasks to complete today.</p>
+            <p className="text-sm text-slate-500">
+              You have {pendingTasksCount} task{pendingTasksCount === 1 ? '' : 's'} to complete.
+            </p>
           </div>
         </div>
         <button

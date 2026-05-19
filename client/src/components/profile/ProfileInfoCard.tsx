@@ -1,14 +1,14 @@
 export type ProfileInfoItem = {
   label: string
-  value: string
+  value?: string | null
 }
 
 type ProfileInfoCardProps = {
   details: ProfileInfoItem[]
 }
 
-function getDisplayValue(value: string) {
-  return value.trim() || 'Not provided'
+function getDisplayValue(value?: string | null) {
+  return value?.trim() || 'Not provided'
 }
 
 function ProfileInfoCard({ details }: ProfileInfoCardProps) {

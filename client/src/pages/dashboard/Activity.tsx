@@ -11,7 +11,7 @@ import {
   Trash2,
   UserPlus,
 } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getWorkspaceActivity, type ActivityAction, type ActivityLog } from '../../api/activity'
 import { getWorkspaces } from '../../api/workspaces'
 import ActivityStats from '../../components/activity/ActivityStats'
@@ -21,6 +21,20 @@ import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
 import LoadingState from '../../components/common/LoadingState'
 import { connectSocket, disconnectSocket, socket } from '../../socket/socket'
+
+const selectedWorkspaceStorageKey = 'livetasker:selectedWorkspaceId'
+
+function getSavedWorkspaceId() {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  try {
+    return window.localStorage.getItem(selectedWorkspaceStorageKey) || undefined
+  } catch {
+    return undefined
+  }
+}
 
 const actionLabels: Record<ActivityAction, string> = {
   created: 'Created',
@@ -70,12 +84,85 @@ const actionStyles: Record<ActivityAction, Pick<TimelineItem, 'icon' | 'iconClas
   },
 }
 
+const defaultActionStyle: Pick<TimelineItem, 'icon' | 'iconClassName' | 'hoverBorderClassName'> = {
+  icon: ActivityIcon,
+  iconClassName: 'bg-slate-100 text-slate-600',
+  hoverBorderClassName: 'hover:border-slate-300',
+}
+
+function getRecordValue(log: ActivityLog, key: string) {
+  return (log as unknown as Record<string, unknown>)[key]
+}
+
+function getStringValue(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined
+}
+
+function getNamedValue(value: unknown, keys: string[]) {
+  if (!value || typeof value !== 'object') {
+    return undefined
+  }
+
+  const record = value as Record<string, unknown>
+
+  for (const key of keys) {
+    const stringValue = getStringValue(record[key])
+
+    if (stringValue) {
+      return stringValue
+    }
+  }
+
+  return undefined
+}
+
+function formatUnknownAction(action?: string) {
+  if (!action) {
+    return undefined
+  }
+
+  return action
+    .replace(/[_-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+    .join(' ')
+}
+
+function getActivityAction(log: ActivityLog): ActivityAction | undefined {
+  const rawAction = getStringValue(log.action) ?? getStringValue(getRecordValue(log, 'type'))
+  const normalizedAction = rawAction?.toLowerCase().replace(/[_-]+/g, ' ')
+
+  if (!normalizedAction) {
+    return undefined
+  }
+
+  if (normalizedAction.includes('comment')) return 'commented'
+  if (normalizedAction.includes('assign')) return 'assigned'
+  if (normalizedAction.includes('complete')) return 'completed'
+  if (normalizedAction.includes('move')) return 'moved'
+  if (normalizedAction.includes('delete') || normalizedAction.includes('remove')) return 'deleted'
+  if (normalizedAction.includes('update') || normalizedAction.includes('edit')) return 'updated'
+  if (normalizedAction.includes('create') || normalizedAction.includes('add')) return 'created'
+
+  return undefined
+}
+
+function getActionLabel(log: ActivityLog) {
+  const action = getActivityAction(log)
+
+  return action ? actionLabels[action] : formatUnknownAction(getStringValue(log.action) ?? getStringValue(getRecordValue(log, 'type'))) ?? 'Activity'
+}
+
 function getActorName(log: ActivityLog) {
-  return typeof log.actor === 'string' ? 'Workspace member' : log.actor.name
+  const actor = getRecordValue(log, 'actor') ?? getRecordValue(log, 'user')
+  const actorName = getNamedValue(actor, ['name', 'fullName', 'username', 'email'])
+
+  return actorName ?? 'Workspace member'
 }
 
 function getTaskTitle(log: ActivityLog) {
-  return typeof log.task === 'object' && log.task ? log.task.title : undefined
+  return getNamedValue(getRecordValue(log, 'task'), ['title', 'name']) ?? getStringValue(getRecordValue(log, 'taskTitle'))
 }
 
 function getProjectLabel(log: ActivityLog) {
@@ -85,15 +172,24 @@ function getProjectLabel(log: ActivityLog) {
     return `Task: ${taskTitle}`
   }
 
-  if (typeof log.board === 'object' && log.board) {
-    return `Board: ${log.board.name}`
+  const boardName = getNamedValue(getRecordValue(log, 'board'), ['name', 'title'])
+
+  if (boardName) {
+    return `Board: ${boardName}`
   }
 
-  return actionLabels[log.action]
+  const workspaceName = getNamedValue(getRecordValue(log, 'workspace'), ['name', 'title'])
+
+  if (workspaceName) {
+    return `Workspace: ${workspaceName}`
+  }
+
+  return getActionLabel(log)
 }
 
 function getStringMetadata(log: ActivityLog, key: string) {
-  const value = log.metadata?.[key]
+  const metadata = getRecordValue(log, 'metadata')
+  const value = metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>)[key] : undefined
 
   return typeof value === 'string' && value.trim() ? value : undefined
 }
@@ -106,15 +202,25 @@ function getDescription(log: ActivityLog) {
   }
 
   const taskTitle = getTaskTitle(log)
-  const boardName = typeof log.board === 'object' && log.board ? log.board.name : undefined
+  const boardName = getNamedValue(getRecordValue(log, 'board'), ['name', 'title'])
+  const details =
+    getStringValue(getRecordValue(log, 'details')) ??
+    getStringValue(getRecordValue(log, 'detail')) ??
+    getStringValue(getRecordValue(log, 'description'))
 
-  if (log.action === 'moved') {
+  if (details) {
+    return details
+  }
+
+  const action = getActivityAction(log)
+
+  if (action === 'moved') {
     return taskTitle
       ? `Task status changed for ${taskTitle}.`
       : 'Task status changed in this workspace.'
   }
 
-  if (log.action === 'updated') {
+  if (action === 'updated') {
     return taskTitle ? `Task details were updated for ${taskTitle}.` : 'Activity details were updated.'
   }
 
@@ -126,7 +232,7 @@ function getDescription(log: ActivityLog) {
 }
 
 function getTransition(log: ActivityLog) {
-  if (log.action !== 'moved') {
+  if (getActivityAction(log) !== 'moved') {
     return undefined
   }
 
@@ -140,15 +246,38 @@ function getTransition(log: ActivityLog) {
   return { from, to }
 }
 
-function formatTime(createdAt: string) {
+function getActivityDate(log: ActivityLog) {
+  return getStringValue(getRecordValue(log, 'createdAt')) ?? getStringValue(getRecordValue(log, 'updatedAt'))
+}
+
+function formatTime(createdAt?: string) {
+  if (!createdAt) {
+    return 'Unknown time'
+  }
+
+  const date = new Date(createdAt)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown time'
+  }
+
   return new Intl.DateTimeFormat('en', {
     hour: 'numeric',
     minute: '2-digit',
-  }).format(new Date(createdAt))
+  }).format(date)
 }
 
-function formatGroupDate(createdAt: string) {
+function formatGroupDate(createdAt?: string) {
+  if (!createdAt) {
+    return 'Recent activity'
+  }
+
   const activityDate = new Date(createdAt)
+
+  if (Number.isNaN(activityDate.getTime())) {
+    return 'Recent activity'
+  }
+
   const today = new Date()
   const yesterday = new Date()
 
@@ -169,31 +298,52 @@ function formatGroupDate(createdAt: string) {
   }).format(activityDate)
 }
 
-function mapActivityLog(log: ActivityLog): TimelineItem {
+function getActivityId(log: ActivityLog, index: number) {
+  return (
+    getStringValue(getRecordValue(log, '_id')) ??
+    getStringValue(getRecordValue(log, 'id')) ??
+    getStringValue(getRecordValue(log, 'entityId')) ??
+    `activity-${index}`
+  )
+}
+
+function getActivityMessage(log: ActivityLog) {
+  return (
+    getStringValue(getRecordValue(log, 'message')) ??
+    getStringValue(getRecordValue(log, 'details')) ??
+    getStringValue(getRecordValue(log, 'detail')) ??
+    `${getActionLabel(log)} activity was recorded`
+  )
+}
+
+function mapActivityLog(log: ActivityLog, index: number): TimelineItem {
   const actor = getActorName(log)
+  const action = getActivityAction(log)
+  const actionStyle = action ? actionStyles[action] : defaultActionStyle
+  const createdAt = getActivityDate(log)
 
   return {
-    id: log._id,
-    title: `${actor}: ${log.message}`,
+    id: getActivityId(log, index),
+    title: `${actor}: ${getActivityMessage(log)}`,
     description: getDescription(log),
     actor,
-    time: formatTime(log.createdAt),
+    time: formatTime(createdAt),
     project: getProjectLabel(log),
-    status: actionLabels[log.action],
+    status: getActionLabel(log),
     transition: getTransition(log),
-    isDetailItalic: log.action === 'commented',
-    ...actionStyles[log.action],
+    isDetailItalic: action === 'commented',
+    ...actionStyle,
   }
 }
 
 function mapActivityGroups(activityLogs: ActivityLog[]): TimelineGroup[] {
   const groupMap = new Map<string, TimelineItem[]>()
 
-  activityLogs.forEach((log) => {
-    const groupDate = formatGroupDate(log.createdAt)
+  activityLogs.forEach((log, index) => {
+    const groupDate = formatGroupDate(getActivityDate(log))
     const groupItems = groupMap.get(groupDate) ?? []
 
-    groupItems.push(mapActivityLog(log))
+    groupItems.push(mapActivityLog(log, index))
     groupMap.set(groupDate, groupItems)
   })
 
@@ -202,6 +352,7 @@ function mapActivityGroups(activityLogs: ActivityLog[]): TimelineGroup[] {
 
 function Activity() {
   const queryClient = useQueryClient()
+  const [savedWorkspaceId] = useState(() => getSavedWorkspaceId())
   const {
     data: workspaces,
     isLoading: areWorkspacesLoading,
@@ -213,7 +364,12 @@ function Activity() {
     queryFn: getWorkspaces,
   })
 
-  const selectedWorkspaceId = workspaces?.[0]?._id
+  const activeWorkspaces = useMemo(() => workspaces?.filter((workspace) => !workspace.isArchived) ?? [], [workspaces])
+  const selectedWorkspace = useMemo(
+    () => activeWorkspaces.find((workspace) => workspace._id === savedWorkspaceId) ?? activeWorkspaces[0],
+    [activeWorkspaces, savedWorkspaceId],
+  )
+  const selectedWorkspaceId = selectedWorkspace?._id
   const {
     data: activityLogs = [],
     isLoading: isActivityLoading,

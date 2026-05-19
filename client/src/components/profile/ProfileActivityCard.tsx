@@ -13,10 +13,11 @@ export type ProfileActivity = {
 
 type ProfileActivityCardProps = {
   activities: ProfileActivity[]
+  isLoading?: boolean
   onViewAll: () => void
 }
 
-function ProfileActivityCard({ activities, onViewAll }: ProfileActivityCardProps) {
+function ProfileActivityCard({ activities, isLoading = false, onViewAll }: ProfileActivityCardProps) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
@@ -30,7 +31,7 @@ function ProfileActivityCard({ activities, onViewAll }: ProfileActivityCardProps
         </button>
       </div>
 
-      {activities.length === 0 ? (
+      {isLoading ? null : activities.length === 0 ? (
         <div className="px-5 py-5">
           <EmptyState
             icon={MessageSquareText}

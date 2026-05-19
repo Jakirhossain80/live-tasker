@@ -1,12 +1,12 @@
 import { Mail, Pencil } from 'lucide-react'
 
 export type ProfileHeaderData = {
-  name: string
-  title: string
-  email: string
+  name?: string | null
+  title?: string | null
+  email?: string | null
   initials: string
   workspaceRole?: string | null
-  bio: string
+  bio?: string | null
 }
 
 type ProfileHeaderProps = {
@@ -14,15 +14,15 @@ type ProfileHeaderProps = {
   onEditProfile: () => void
 }
 
-function getDisplayValue(value: string) {
-  return value.trim() || 'Not provided'
+function getDisplayValue(value?: string | null) {
+  return value?.trim() || 'Not provided'
 }
 
 function ProfileHeader({ profile, onEditProfile }: ProfileHeaderProps) {
   const name = getDisplayValue(profile.name)
   const title = getDisplayValue(profile.title)
   const email = getDisplayValue(profile.email)
-  const initials = profile.initials.trim() || 'LT'
+  const initials = profile.initials.trim() || 'NP'
   const workspaceRole = profile.workspaceRole?.trim()
   const bio = getDisplayValue(profile.bio)
 

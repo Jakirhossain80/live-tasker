@@ -12,9 +12,14 @@ export type ProfileStat = {
 
 type ProfileStatsProps = {
   stats: ProfileStat[]
+  isLoading?: boolean
 }
 
-function ProfileStats({ stats }: ProfileStatsProps) {
+function ProfileStats({ stats, isLoading = false }: ProfileStatsProps) {
+  if (isLoading) {
+    return null
+  }
+
   if (stats.length === 0) {
     return (
       <EmptyState

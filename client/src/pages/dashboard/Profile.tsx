@@ -122,7 +122,7 @@ function Profile() {
     title: NOT_PROVIDED,
     email,
     initials: getInitials(user?.name, user?.email),
-    workspaceRole: NOT_PROVIDED,
+    workspaceRole: undefined,
     bio: NOT_PROVIDED,
   }
 

@@ -17,6 +17,16 @@ export type LoginUserPayload = {
   password: string
 }
 
+export type UpdateMyProfilePayload = {
+  name?: string
+  email?: string
+}
+
+export type UpdateMyPasswordPayload = {
+  currentPassword: string
+  newPassword: string
+}
+
 export type AuthResponse = {
   user: AuthUser
   accessToken: string
@@ -35,6 +45,11 @@ type ApiResponse<TData> = {
   success: boolean
   message?: string
   data: TData
+}
+
+type ApiMessageResponse = {
+  success: boolean
+  message: string
 }
 
 export async function registerUser(payload: RegisterUserPayload) {
@@ -63,4 +78,16 @@ export async function getCurrentUser() {
   const response = await http.get<ApiResponse<CurrentUserResponse>>('/auth/me')
 
   return response.data.data
+}
+
+export async function updateMyProfile(payload: UpdateMyProfilePayload) {
+  const response = await http.patch<ApiResponse<CurrentUserResponse>>('/auth/me', payload)
+
+  return response.data.data
+}
+
+export async function updateMyPassword(payload: UpdateMyPasswordPayload) {
+  const response = await http.patch<ApiMessageResponse>('/auth/password', payload)
+
+  return response.data
 }

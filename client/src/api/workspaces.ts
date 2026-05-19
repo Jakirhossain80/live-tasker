@@ -61,6 +61,10 @@ type WorkspaceData = {
   workspace: Workspace
 }
 
+type DeleteWorkspaceData = {
+  workspace: Workspace
+}
+
 export async function getWorkspaces() {
   const response = await http.get<ApiResponse<WorkspacesData>>('/workspaces')
 
@@ -81,6 +85,12 @@ export async function createWorkspace(payload: CreateWorkspacePayload) {
 
 export async function updateWorkspace(workspaceId: string, payload: UpdateWorkspacePayload) {
   const response = await http.patch<ApiResponse<WorkspaceData>>(`/workspaces/${workspaceId}`, payload)
+
+  return response.data.data.workspace
+}
+
+export async function deleteWorkspace(workspaceId: string) {
+  const response = await http.delete<ApiResponse<DeleteWorkspaceData>>(`/workspaces/${workspaceId}`)
 
   return response.data.data.workspace
 }

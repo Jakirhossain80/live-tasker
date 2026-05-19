@@ -1,15 +1,17 @@
 import { Camera } from 'lucide-react'
 
 type ProfileInformationProps = {
+  onProfileChange: (field: 'name' | 'email' | 'jobTitle', value: string) => void
   profile: {
     fullName: string
     email: string
     jobTitle: string
     initials: string
+    statusText?: string
   }
 }
 
-function ProfileInformation({ profile }: ProfileInformationProps) {
+function ProfileInformation({ onProfileChange, profile }: ProfileInformationProps) {
   const inputClassName =
     'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
 
@@ -18,6 +20,9 @@ function ProfileInformation({ profile }: ProfileInformationProps) {
       <div className="border-b border-slate-100 bg-slate-50/50 px-5 py-4">
         <div className="flex items-center justify-between gap-4">
           <h3 className="text-lg font-semibold text-slate-950">Profile Information</h3>
+          {profile.statusText ? (
+            <span className="text-xs font-medium text-slate-500">{profile.statusText}</span>
+          ) : null}
         </div>
       </div>
 
@@ -42,7 +47,8 @@ function ProfileInformation({ profile }: ProfileInformationProps) {
             <span className="text-sm font-medium text-slate-700">Full Name</span>
             <input
               type="text"
-              defaultValue={profile.fullName}
+              value={profile.fullName}
+              onChange={(event) => onProfileChange('name', event.target.value)}
               className={inputClassName}
             />
           </label>
@@ -51,7 +57,8 @@ function ProfileInformation({ profile }: ProfileInformationProps) {
             <span className="text-sm font-medium text-slate-700">Email Address</span>
             <input
               type="email"
-              defaultValue={profile.email}
+              value={profile.email}
+              onChange={(event) => onProfileChange('email', event.target.value)}
               className={inputClassName}
             />
           </label>
@@ -60,7 +67,8 @@ function ProfileInformation({ profile }: ProfileInformationProps) {
             <span className="text-sm font-medium text-slate-700">Job Title</span>
             <input
               type="text"
-              defaultValue={profile.jobTitle}
+              value={profile.jobTitle}
+              onChange={(event) => onProfileChange('jobTitle', event.target.value)}
               className={inputClassName}
             />
           </label>

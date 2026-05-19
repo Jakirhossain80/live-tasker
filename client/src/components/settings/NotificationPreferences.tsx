@@ -1,4 +1,9 @@
+import { useEffect, useState } from 'react'
 import { BellRing, Mail, MessageSquareText, Smartphone } from 'lucide-react'
+
+type NotificationPreferencesProps = {
+  resetSignal: number
+}
 
 const preferences = [
   {
@@ -21,7 +26,28 @@ const preferences = [
   },
 ]
 
-function NotificationPreferences() {
+function getInitialPreferences() {
+  return preferences.reduce<Record<string, boolean>>((values, preference) => {
+    values[preference.label] = preference.enabled
+
+    return values
+  }, {})
+}
+
+function NotificationPreferences({ resetSignal }: NotificationPreferencesProps) {
+  const [selectedPreferences, setSelectedPreferences] = useState(getInitialPreferences)
+
+  useEffect(() => {
+    setSelectedPreferences(getInitialPreferences())
+  }, [resetSignal])
+
+  function handlePreferenceChange(label: string, enabled: boolean) {
+    setSelectedPreferences((currentPreferences) => ({
+      ...currentPreferences,
+      [label]: enabled,
+    }))
+  }
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -49,15 +75,17 @@ function NotificationPreferences() {
                 </div>
               </div>
 
-              <label htmlFor={inputId} className="relative inline-flex cursor-default items-center">
+              <label htmlFor={inputId} className="relative inline-flex cursor-pointer items-center">
                 <input
                   id={inputId}
                   type="checkbox"
-                  defaultChecked={preference.enabled}
-                  disabled
+                  checked={selectedPreferences[preference.label]}
+                  onChange={(event) =>
+                    handlePreferenceChange(preference.label, event.target.checked)
+                  }
                   className="peer sr-only"
                 />
-                <span className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-indigo-600 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-200 peer-focus-visible:ring-offset-2 peer-disabled:opacity-100" />
+                <span className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-indigo-600 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-200 peer-focus-visible:ring-offset-2" />
                 <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
                 <span className="sr-only">Toggle {preference.label}</span>
               </label>

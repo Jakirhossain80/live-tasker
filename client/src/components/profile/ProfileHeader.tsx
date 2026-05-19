@@ -5,7 +5,7 @@ export type ProfileHeaderData = {
   title: string
   email: string
   initials: string
-  workspaceRole: string
+  workspaceRole?: string | null
   bio: string
 }
 
@@ -23,7 +23,7 @@ function ProfileHeader({ profile, onEditProfile }: ProfileHeaderProps) {
   const title = getDisplayValue(profile.title)
   const email = getDisplayValue(profile.email)
   const initials = profile.initials.trim() || 'LT'
-  const workspaceRole = getDisplayValue(profile.workspaceRole)
+  const workspaceRole = profile.workspaceRole?.trim()
   const bio = getDisplayValue(profile.bio)
 
   return (
@@ -43,9 +43,11 @@ function ProfileHeader({ profile, onEditProfile }: ProfileHeaderProps) {
             <div className="min-w-0 pt-1 sm:pb-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="break-words text-2xl font-bold text-slate-950 sm:text-3xl">{name}</h2>
-                <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold uppercase text-indigo-700">
-                  {workspaceRole}
-                </span>
+                {workspaceRole ? (
+                  <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold uppercase text-indigo-700">
+                    {workspaceRole}
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 text-sm font-medium text-slate-600">{title}</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">

@@ -4,6 +4,7 @@ import DashboardLayout from '../layouts/DashboardLayout'
 import Login from '../pages/auth/Login'
 import Register from '../pages/auth/Register'
 import Activity from '../pages/dashboard/Activity'
+import Boards from '../pages/dashboard/Boards'
 import DashboardHome from '../pages/dashboard/DashboardHome'
 import Members from '../pages/dashboard/Members'
 import MyTasks from '../pages/dashboard/MyTasks'
@@ -66,6 +67,10 @@ export const router = createBrowserRouter([
       {
         path: 'tasks/:taskId',
         element: <TaskDetails />,
+      },
+      {
+        path: 'boards',
+        element: <Boards />,
       },
       {
         path: 'boards/:boardId',

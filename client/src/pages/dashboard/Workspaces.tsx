@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
 import { FolderKanban, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { createBoard, isValidBoardId, type CreateBoardPayload } from '../../api/boards'
+import { createBoard, getBoards, isValidBoardId, type CreateBoardPayload } from '../../api/boards'
 import {
   createWorkspace,
   deleteWorkspace,
@@ -165,6 +165,21 @@ function Workspaces() {
   const activeWorkspaces = workspaces?.filter((workspace) => !workspace.isArchived)
   const selectedWorkspace =
     activeWorkspaces?.find((workspace) => workspace._id === selectedWorkspaceId) ?? activeWorkspaces?.[0]
+  const selectedWorkspaceBoardId = selectedWorkspace?._id
+  const {
+    data: workspaceBoards = [],
+    isLoading: areBoardsLoading,
+    isError: isBoardsError,
+    error: boardsError,
+    refetch: refetchBoards,
+  } = useQuery({
+    queryKey: ['boards', selectedWorkspaceBoardId],
+    queryFn: () => getBoards(selectedWorkspaceBoardId as string),
+    enabled: Boolean(selectedWorkspaceBoardId),
+  })
+  const activeWorkspaceBoards = workspaceBoards.filter(
+    (board) => !board.isArchived && board._id !== 'demo-board' && isValidBoardId(board._id),
+  )
 
   useEffect(() => {
     const availableWorkspaces = workspaces?.filter((workspace) => !workspace.isArchived)
@@ -526,22 +541,81 @@ function Workspaces() {
         />
       </div>
 
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 className="text-base font-bold text-slate-950">Workspace Boards</h3>
-          <p className="mt-1 text-sm text-slate-500">Create a board to organize tasks, columns, and delivery work.</p>
-          {createBoardSuccessMessage ? (
-            <p className="mt-2 text-sm font-semibold text-emerald-700">{createBoardSuccessMessage}</p>
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-base font-bold text-slate-950">Workspace Boards</h3>
+            <p className="mt-1 text-sm text-slate-500">Create a board to organize tasks, columns, and delivery work.</p>
+            {createBoardSuccessMessage ? (
+              <p className="mt-2 text-sm font-semibold text-emerald-700">{createBoardSuccessMessage}</p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={openCreateBoardModal}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700"
+          >
+            <Plus className="h-4 w-4" />
+            Create Board
+          </button>
+        </div>
+
+        <div className="border-t border-slate-200 px-5 py-4">
+          {areBoardsLoading ? (
+            <p className="text-sm font-medium text-slate-500">Loading boards...</p>
+          ) : null}
+
+          {isBoardsError ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-rose-100 bg-rose-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-medium text-rose-700">
+                {boardsError instanceof Error ? boardsError.message : 'Could not load boards.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  void refetchBoards()
+                }}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-rose-200 bg-white px-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
+
+          {!areBoardsLoading && !isBoardsError && activeWorkspaceBoards.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-700">No boards yet</p>
+              <p className="mt-1 text-sm text-slate-500">Create a board to start organizing this workspace.</p>
+            </div>
+          ) : null}
+
+          {!areBoardsLoading && !isBoardsError && activeWorkspaceBoards.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {activeWorkspaceBoards.map((board) => (
+                <button
+                  key={board._id}
+                  type="button"
+                  onClick={() => {
+                    void navigate(`/dashboard/boards/${board._id}`)
+                  }}
+                  className="group rounded-lg border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-950">{board.name}</p>
+                      {board.description ? (
+                        <p className="mt-1 line-clamp-2 text-sm text-slate-500">{board.description}</p>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 text-xs font-semibold text-indigo-600 group-hover:text-indigo-700">
+                      Open Board
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={openCreateBoardModal}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700"
-        >
-          <Plus className="h-4 w-4" />
-          Create Board
-        </button>
       </div>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">

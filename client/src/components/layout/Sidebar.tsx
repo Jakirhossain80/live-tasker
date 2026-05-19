@@ -10,22 +10,52 @@ import {
   SquareCheckBig,
   UserRound,
   Users,
+  type LucideIcon,
 } from 'lucide-react'
 import { Link, NavLink, matchPath, useLocation } from 'react-router-dom'
-import { getBoards } from '../../api/boards'
+import { getBoards, isValidBoardId } from '../../api/boards'
 import { getWorkspaces } from '../../api/workspaces'
 
-function getNavigationItems(boardHref: string) {
+type NavigationItem = {
+  label: string
+  icon: LucideIcon
+  to: string
+  activePaths?: string[]
+}
+
+const selectedWorkspaceStorageKey = 'livetasker:selectedWorkspaceId'
+
+function getSavedWorkspaceId() {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  try {
+    return window.localStorage.getItem(selectedWorkspaceStorageKey) || undefined
+  } catch {
+    return undefined
+  }
+}
+
+function getNavigationItems(): NavigationItem[] {
   return [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
   { label: 'My Tasks', icon: SquareCheckBig, to: '/dashboard/my-tasks' },
-    { label: 'Boards', icon: Columns3, to: boardHref, activePath: '/dashboard/boards/:boardId' },
+    { label: 'Boards', icon: Columns3, to: '/dashboard/boards', activePaths: ['/dashboard/boards', '/dashboard/boards/:boardId'] },
   { label: 'Members', icon: Users, to: '/dashboard/members' },
-  { label: 'Workspaces', icon: FolderKanban, to: '/dashboard/workspaces' },
+  { label: 'Workspaces', icon: FolderKanban, to: '/dashboard/workspaces', activePaths: ['/dashboard/workspaces'] },
   { label: 'Activity', icon: Activity, to: '/dashboard/activity' },
   { label: 'Profile', icon: UserRound, to: '/dashboard/profile' },
   { label: 'Settings', icon: Settings, to: '/dashboard/settings' },
   ]
+}
+
+function isNavigationItemActive(item: NavigationItem, pathname: string) {
+  if (item.activePaths) {
+    return item.activePaths.some((activePath) => matchPath({ path: activePath, end: true }, pathname))
+  }
+
+  return matchPath({ path: item.to, end: item.to === '/dashboard' }, pathname)
 }
 
 function Sidebar() {
@@ -34,15 +64,18 @@ function Sidebar() {
     queryKey: ['workspaces'],
     queryFn: getWorkspaces,
   })
-  const selectedWorkspaceId = workspaces?.[0]?._id
+  const activeWorkspaces = workspaces?.filter((workspace) => !workspace.isArchived) ?? []
+  const savedWorkspaceId = getSavedWorkspaceId()
+  const selectedWorkspace =
+    activeWorkspaces.find((workspace) => workspace._id === savedWorkspaceId) ?? activeWorkspaces[0]
+  const selectedWorkspaceId = selectedWorkspace?._id
   const { data: boards } = useQuery({
     queryKey: ['boards', selectedWorkspaceId],
     queryFn: () => getBoards(selectedWorkspaceId as string),
     enabled: Boolean(selectedWorkspaceId),
   })
-  const selectedBoardId = boards?.[0]?._id
-  const boardHref = selectedBoardId ? `/dashboard/boards/${selectedBoardId}` : '/dashboard/workspaces'
-  const navigationItems = getNavigationItems(boardHref)
+  const selectedBoardId = boards?.find((board) => !board.isArchived && board._id !== 'demo-board' && isValidBoardId(board._id))?._id
+  const navigationItems = getNavigationItems()
 
   return (
     <aside className="fixed bottom-0 left-0 top-16 z-40 hidden w-[280px] border-r border-slate-200 bg-white shadow-sm md:flex md:flex-col">
@@ -83,11 +116,7 @@ function Sidebar() {
       <nav className="flex-1 space-y-1 px-4">
         {navigationItems.map((item) => {
           const Icon = item.icon
-          const isActive = Boolean(
-            item.activePath
-              ? matchPath({ path: item.activePath, end: true }, location.pathname)
-              : matchPath({ path: item.to, end: item.to === '/dashboard' }, location.pathname),
-          )
+          const isActive = Boolean(isNavigationItemActive(item, location.pathname))
 
           return (
             <NavLink

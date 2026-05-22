@@ -15,8 +15,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { KanbanSquare, Plus } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { getBoardById, isValidBoardId, type Board, type BoardColumn } from '../../api/boards'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { getBoardById, getBoards, isValidBoardId, updateBoard, type Board, type BoardColumn } from '../../api/boards'
 import {
   createTask,
   deleteTask,
@@ -29,6 +29,7 @@ import {
   type TaskPriority,
   type UpdateTaskPayload,
 } from '../../api/tasks'
+import { getWorkspaces } from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
 import LoadingState from '../../components/common/LoadingState'
@@ -86,6 +87,19 @@ const priorityClassNames: Record<TaskPriority, string> = {
 }
 
 const emptyTasks: Task[] = []
+const selectedWorkspaceStorageKey = 'livetasker:selectedWorkspaceId'
+
+function getSavedWorkspaceId() {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  try {
+    return window.localStorage.getItem(selectedWorkspaceStorageKey) || undefined
+  } catch {
+    return undefined
+  }
+}
 
 function formatDueDate(dueDate?: string) {
   if (!dueDate) {
@@ -331,6 +345,7 @@ function ProjectBoard() {
   const { boardId } = useParams()
   const hasValidBoardId = isValidBoardId(boardId)
   const hasJoinableBoardId = Boolean(boardId && boardId !== 'demo-board' && hasValidBoardId)
+  const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { socket, isConnected } = useSocket()
@@ -342,7 +357,10 @@ function ProjectBoard() {
   const [createTaskErrorMessage, setCreateTaskErrorMessage] = useState<string>()
   const [editTaskErrorMessage, setEditTaskErrorMessage] = useState<string>()
   const [deleteTaskErrorMessage, setDeleteTaskErrorMessage] = useState<string>()
+  const [deleteColumnErrorMessage, setDeleteColumnErrorMessage] = useState<string>()
   const [moveTaskErrorMessage, setMoveTaskErrorMessage] = useState<string>()
+  const [savedWorkspaceId] = useState(() => getSavedWorkspaceId())
+  const handledCreateTaskLocationKeyRef = useRef<string | undefined>(undefined)
   const recentLocalMoveSignaturesRef = useRef(new Set<string>())
   const recentLocalMoveTimeoutsRef = useRef<ReturnType<typeof window.setTimeout>[]>([])
   const sensors = useSensors(
@@ -378,8 +396,40 @@ function ProjectBoard() {
     enabled: hasValidBoardId,
   })
   const fetchedTasksSignature = useMemo(() => getTaskListSignature(fetchedTasks), [fetchedTasks])
-  const workspaceId = getBoardWorkspaceId(board)
+  const boardWorkspaceId = getBoardWorkspaceId(board)
+  const { data: workspaces } = useQuery({
+    queryKey: ['workspaces'],
+    queryFn: getWorkspaces,
+  })
+  const activeWorkspaces = useMemo(() => workspaces?.filter((workspace) => !workspace.isArchived) ?? [], [workspaces])
+  const selectedWorkspace = useMemo(
+    () =>
+      activeWorkspaces.find((workspace) => workspace._id === savedWorkspaceId) ??
+      activeWorkspaces.find((workspace) => workspace._id === boardWorkspaceId) ??
+      activeWorkspaces[0],
+    [activeWorkspaces, boardWorkspaceId, savedWorkspaceId],
+  )
+  const workspaceId = selectedWorkspace?._id ?? boardWorkspaceId
   const onlineUsers = useOnlineUsers(workspaceId)
+  const { data: workspaceBoards = [] } = useQuery({
+    queryKey: ['boards', workspaceId],
+    queryFn: () => getBoards(workspaceId as string),
+    enabled: Boolean(workspaceId),
+  })
+  const boardOptions = useMemo(() => {
+    const activeBoards = workspaceBoards
+      .filter(
+        (workspaceBoard) =>
+          !workspaceBoard.isArchived && workspaceBoard._id !== 'demo-board' && isValidBoardId(workspaceBoard._id),
+      )
+      .map((workspaceBoard) => ({ id: workspaceBoard._id, name: workspaceBoard.name }))
+
+    if (!board || activeBoards.some((workspaceBoard) => workspaceBoard.id === board._id)) {
+      return activeBoards
+    }
+
+    return [{ id: board._id, name: board.name }, ...activeBoards]
+  }, [board, workspaceBoards])
 
   useEffect(() => {
     setLocalTasks((currentTasks) =>
@@ -512,6 +562,38 @@ function ProjectBoard() {
       setDeleteTaskErrorMessage(getErrorMessage(mutationError))
     },
   })
+  const deleteColumnMutation = useMutation({
+    mutationFn: ({ columnId }: { columnId: string }) => {
+      if (!board || !boardId) {
+        throw new Error('Could not delete column.')
+      }
+
+      const nextColumns = board.columns
+        .filter((column) => column._id !== columnId)
+        .sort((firstColumn, secondColumn) => firstColumn.order - secondColumn.order)
+        .map((column, order) => ({
+          _id: column._id,
+          title: column.title,
+          order,
+        }))
+
+      return updateBoard(boardId, { columns: nextColumns })
+    },
+    onSuccess: async (updatedBoard) => {
+      setDeleteColumnErrorMessage(undefined)
+      queryClient.setQueryData<Board>(['board', boardId], updatedBoard)
+      await queryClient.invalidateQueries({ queryKey: ['board', boardId] })
+
+      const updatedWorkspaceId = getBoardWorkspaceId(updatedBoard)
+
+      if (updatedWorkspaceId) {
+        await queryClient.invalidateQueries({ queryKey: ['boards', updatedWorkspaceId] })
+      }
+    },
+    onError: (mutationError) => {
+      setDeleteColumnErrorMessage(getErrorMessage(mutationError))
+    },
+  })
   const moveTaskMutation = useMutation({
     mutationFn: ({ taskId, payload }: { taskId: string; payload: MoveTaskPayload }) => moveTask(taskId, payload),
     onSuccess: async () => {
@@ -525,6 +607,19 @@ function ProjectBoard() {
   const columns = useMemo(() => (board ? mapBoardColumns(board.columns, localTasks) : []), [board, localTasks])
   const columnOptions = useMemo(() => columns.map((column) => ({ id: column.id, title: column.title })), [columns])
   const defaultTaskStatus = useMemo(() => selectedColumnId || columns[0]?.id || '', [columns, selectedColumnId])
+
+  useEffect(() => {
+    if (
+      !location.state?.openCreateTask ||
+      handledCreateTaskLocationKeyRef.current === location.key ||
+      columns.length === 0
+    ) {
+      return
+    }
+
+    handledCreateTaskLocationKeyRef.current = location.key
+    openCreateTaskModal(columns[0].id)
+  }, [columns, location.key, location.state])
 
   function openCreateTaskModal(columnId: string) {
     setSelectedColumnId(columnId)
@@ -556,6 +651,12 @@ function ProjectBoard() {
     navigate(`/dashboard/tasks/${taskId}`)
   }
 
+  function handleBoardChange(nextBoardId: string) {
+    if (nextBoardId !== boardId) {
+      navigate(`/dashboard/boards/${nextBoardId}`)
+    }
+  }
+
   function handleEditTask(taskId: string) {
     const task = localTasks.find((taskItem) => taskItem._id === taskId)
 
@@ -578,6 +679,35 @@ function ProjectBoard() {
     if (confirmed) {
       setDeleteTaskErrorMessage(undefined)
       deleteTaskMutation.mutate(taskId)
+    }
+  }
+
+  function handleDeleteColumn(columnId: string) {
+    if (!board || deleteColumnMutation.isPending) {
+      return
+    }
+
+    const column = columns.find((columnItem) => columnItem.id === columnId)
+
+    if (!column) {
+      return
+    }
+
+    if (board.columns.length <= 1) {
+      setDeleteColumnErrorMessage('You cannot delete the last remaining column.')
+      return
+    }
+
+    if (column.count > 0) {
+      setDeleteColumnErrorMessage('Move all tasks out of this column before deleting it.')
+      return
+    }
+
+    const confirmed = window.confirm(`Delete "${column.title}" column?`)
+
+    if (confirmed) {
+      setDeleteColumnErrorMessage(undefined)
+      deleteColumnMutation.mutate({ columnId })
     }
   }
 
@@ -729,17 +859,27 @@ function ProjectBoard() {
   }
 
   return (
-    <div className="mx-auto flex max-w-full flex-col gap-6">
-      <KanbanHeader title={board.name} description={board.description} onlineUsers={onlineUsers} />
+    <div className="mx-auto flex min-w-0 max-w-full flex-col gap-6">
+      <KanbanHeader
+        title={board.name}
+        description={board.description}
+        onlineUsers={onlineUsers}
+        boardOptions={boardOptions}
+        selectedBoardId={boardId}
+        onBoardChange={handleBoardChange}
+      />
 
       {deleteTaskErrorMessage ? (
         <ErrorState title="Could not delete task" message={deleteTaskErrorMessage} />
+      ) : null}
+      {deleteColumnErrorMessage ? (
+        <ErrorState title="Could not delete column" message={deleteColumnErrorMessage} />
       ) : null}
       {moveTaskErrorMessage ? (
         <ErrorState title="Could not move task" message={moveTaskErrorMessage} />
       ) : null}
 
-      <div className="kanban-board-scroll min-h-[calc(100vh-196px)] overflow-x-auto pb-3 sm:min-h-[calc(100vh-172px)]">
+      <div className="kanban-board-scroll min-h-[calc(100vh-196px)] w-full max-w-full overflow-x-scroll overflow-y-hidden pb-3 sm:min-h-[calc(100vh-172px)]">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -747,7 +887,7 @@ function ProjectBoard() {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex h-full gap-6">
+          <div className="flex h-full min-w-full flex-nowrap gap-6">
             {columns.map((column) => (
               <KanbanColumn
                 key={column.id}
@@ -765,6 +905,7 @@ function ProjectBoard() {
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}
                 onMoveTask={handleMoveTask}
+                onDeleteColumn={handleDeleteColumn}
               />
             ))}
             <button

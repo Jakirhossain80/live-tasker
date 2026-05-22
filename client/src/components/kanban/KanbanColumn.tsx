@@ -1,4 +1,5 @@
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { Trash2 } from 'lucide-react'
 import KanbanAddTaskButton from './KanbanAddTaskButton'
 import DraggableTaskCard from './DraggableTaskCard'
 import DroppableColumn from './DroppableColumn'
@@ -33,6 +34,7 @@ type KanbanColumnProps = {
   onEditTask?: (taskId: string) => void
   onDeleteTask?: (taskId: string) => void
   onMoveTask?: (taskId: string, status: string) => void
+  onDeleteColumn?: (columnId: string) => void
 }
 
 function KanbanColumn({
@@ -50,6 +52,7 @@ function KanbanColumn({
   onEditTask,
   onDeleteTask,
   onMoveTask,
+  onDeleteColumn,
 }: KanbanColumnProps) {
   const taskIds = tasks.map((task) => task.id)
 
@@ -60,6 +63,18 @@ function KanbanColumn({
       count={count}
       accentClassName={accentClassName}
       isDropEnabled={isDropEnabled}
+      headerAction={
+        onDeleteColumn ? (
+          <button
+            type="button"
+            aria-label={`Delete ${title} column`}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+            onClick={() => onDeleteColumn(columnId)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        ) : undefined
+      }
       footer={showAddTaskButton ? <KanbanAddTaskButton onClick={() => onAddTask?.(columnId)} /> : undefined}
     >
       {tasks.length > 0 ? (

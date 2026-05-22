@@ -8,6 +8,7 @@ type DroppableColumnProps = {
   count: number
   accentClassName: string
   children: ReactNode
+  headerAction?: ReactNode
   footer?: ReactNode
   isDropEnabled?: boolean
 }
@@ -18,6 +19,7 @@ function DroppableColumn({
   count,
   accentClassName,
   children,
+  headerAction,
   footer,
   isDropEnabled = false,
 }: DroppableColumnProps) {
@@ -38,9 +40,12 @@ function DroppableColumn({
           <span className={`h-2.5 w-2.5 rounded-full ${accentClassName}`} />
           <h2 className="text-sm font-semibold text-slate-950">{title}</h2>
         </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-500 shadow-sm">
-          {count}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-500 shadow-sm">
+            {count}
+          </span>
+          {headerAction}
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col gap-3">{children}</div>

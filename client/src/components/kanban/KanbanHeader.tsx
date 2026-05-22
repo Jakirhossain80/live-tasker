@@ -11,6 +11,9 @@ type KanbanHeaderProps = {
   title?: string
   description?: string
   onlineUsers?: OnlineUser[]
+  boardOptions?: { id: string; name: string }[]
+  selectedBoardId?: string
+  onBoardChange?: (boardId: string) => void
 }
 
 function getInitials(name: string) {
@@ -22,15 +25,39 @@ function getInitials(name: string) {
     .toUpperCase()
 }
 
-function KanbanHeader({ title = 'Kanban Board', description, onlineUsers = [] }: KanbanHeaderProps) {
+function KanbanHeader({
+  title = 'Kanban Board',
+  description,
+  onlineUsers = [],
+  boardOptions = [],
+  selectedBoardId,
+  onBoardChange,
+}: KanbanHeaderProps) {
   const displayedOnlineUsers = onlineUsers.slice(0, 4)
   const hiddenOnlineUserCount = Math.max(0, onlineUsers.length - displayedOnlineUsers.length)
+  const showBoardSelector = Boolean(selectedBoardId && onBoardChange && boardOptions.length > 0)
 
   return (
     <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-wrap items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">{title}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">{title}</h1>
+            {showBoardSelector ? (
+              <select
+                aria-label="Select board"
+                className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                value={selectedBoardId}
+                onChange={(event) => onBoardChange?.(event.target.value)}
+              >
+                {boardOptions.map((board) => (
+                  <option key={board.id} value={board.id}>
+                    {board.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
           {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{description}</p> : null}
         </div>
 

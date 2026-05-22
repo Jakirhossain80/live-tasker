@@ -40,6 +40,7 @@ export type CreateBoardPayload = {
 }
 
 export type CreateBoardColumnPayload = {
+  _id?: string
   title: string
   order: number
 }

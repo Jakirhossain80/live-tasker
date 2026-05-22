@@ -5,7 +5,11 @@ type MainContentProps = {
 }
 
 function MainContent({ children }: MainContentProps) {
-  return <main className="min-h-screen bg-[#faf8ff] px-4 pb-8 pt-20 sm:px-6 md:ml-[280px] lg:px-8">{children}</main>
+  return (
+    <main className="min-h-screen min-w-0 overflow-x-hidden bg-[#faf8ff] px-4 pb-8 pt-20 sm:px-6 md:ml-[280px] lg:px-8">
+      {children}
+    </main>
+  )
 }
 
 export default MainContent

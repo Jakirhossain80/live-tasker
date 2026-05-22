@@ -26,6 +26,19 @@ const avatarClassNames = [
   'bg-amber-100 text-amber-700',
   'bg-rose-100 text-rose-700',
 ]
+const selectedWorkspaceStorageKey = 'livetasker:selectedWorkspaceId'
+
+function getSavedWorkspaceId() {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  try {
+    return window.localStorage.getItem(selectedWorkspaceStorageKey) || undefined
+  } catch {
+    return undefined
+  }
+}
 
 function getInitials(name: string) {
   return name
@@ -104,7 +117,11 @@ function Members() {
     queryFn: getWorkspaces,
   })
 
-  const selectedWorkspaceId = workspaces?.[0]?._id
+  const activeWorkspaces = workspaces?.filter((availableWorkspace) => !availableWorkspace.isArchived)
+  const selectedWorkspace =
+    activeWorkspaces?.find((availableWorkspace) => availableWorkspace._id === getSavedWorkspaceId()) ??
+    activeWorkspaces?.[0]
+  const selectedWorkspaceId = selectedWorkspace?._id
   const {
     data: workspace,
     isLoading: isWorkspaceLoading,
@@ -180,7 +197,7 @@ function Members() {
     )
   }
 
-  if (!workspaces || workspaces.length === 0 || !workspace) {
+  if (!activeWorkspaces || activeWorkspaces.length === 0 || !workspace) {
     return (
       <div className="mx-auto max-w-6xl">
         <EmptyState
@@ -244,7 +261,7 @@ function Members() {
         </div>
 
         <aside className="space-y-4">
-          <QuickInviteCard />
+          <QuickInviteCard workspaceId={workspace._id} />
           <UpgradeSeatsCard />
         </aside>
       </section>

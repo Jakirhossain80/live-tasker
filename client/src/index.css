@@ -29,8 +29,11 @@ h6 {
 }
 
 .kanban-board-scroll {
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+  scrollbar-gutter: stable;
 }
 
 .kanban-board-scroll::-webkit-scrollbar {
@@ -38,7 +41,8 @@ h6 {
 }
 
 .kanban-board-scroll::-webkit-scrollbar-track {
-  background: transparent;
+  background: #f1f5f9;
+  border-radius: 999px;
 }
 
 .kanban-board-scroll::-webkit-scrollbar-thumb {

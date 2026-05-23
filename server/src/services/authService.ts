@@ -21,6 +21,16 @@ interface LoginInput {
   password: string;
 }
 
+interface UpdateMeInput {
+  name?: string;
+  email?: string;
+}
+
+interface UpdatePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
 const getRequiredEnv = (key: string) => {
   const value = process.env[key];
 
@@ -192,11 +202,71 @@ const getMe = async (userId: string) => {
   return getPublicUser(user);
 };
 
+const updateMe = async (userId: string, { name, email }: UpdateMeInput) => {
+  const user = await User.findById(userId);
+
+  if (!user || !user.isActive) {
+    const error = new Error("User not found");
+    Object.assign(error, { statusCode: 404 });
+    throw error;
+  }
+
+  if (name !== undefined) {
+    user.name = name.trim();
+  }
+
+  if (email !== undefined) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await User.findOne({
+      email: normalizedEmail,
+      _id: { $ne: user._id },
+    });
+
+    if (existingUser) {
+      const error = new Error("A user with this email already exists");
+      Object.assign(error, { statusCode: 409 });
+      throw error;
+    }
+
+    user.email = normalizedEmail;
+  }
+
+  await user.save();
+
+  return getPublicUser(user);
+};
+
+const updatePassword = async (
+  userId: string,
+  { currentPassword, newPassword }: UpdatePasswordInput,
+) => {
+  const user = await User.findById(userId).select("+password");
+
+  if (!user || !user.isActive) {
+    const error = new Error("User not found");
+    Object.assign(error, { statusCode: 404 });
+    throw error;
+  }
+
+  const passwordMatches = await bcrypt.compare(currentPassword, user.password);
+
+  if (!passwordMatches) {
+    const error = new Error("Current password is incorrect");
+    Object.assign(error, { statusCode: 401 });
+    throw error;
+  }
+
+  user.password = await bcrypt.hash(newPassword, 12);
+  await user.save();
+};
+
 export = {
   refreshTokenCookieName,
   register,
   login,
   refresh,
   getMe,
+  updateMe,
+  updatePassword,
   verifyAccessToken,
 };

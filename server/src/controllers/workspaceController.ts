@@ -233,6 +233,21 @@ const updateWorkspace = asyncHandler(async (req, res) => {
   });
 });
 
+const archiveWorkspace = asyncHandler(async (req, res) => {
+  const workspace = await workspaceService.archiveWorkspace({
+    workspaceId: getRouteParam(req, "workspaceId"),
+    userId: getAuthUserId(req),
+  });
+
+  res.json({
+    success: true,
+    message: "Workspace archived successfully",
+    data: {
+      workspace,
+    },
+  });
+});
+
 const addMember = asyncHandler(async (req, res) => {
   const validationError = validateMemberBody(req.body);
 
@@ -300,6 +315,7 @@ export = {
   getWorkspaces,
   getWorkspaceById,
   updateWorkspace,
+  archiveWorkspace,
   addMember,
   updateMember,
   removeMember,

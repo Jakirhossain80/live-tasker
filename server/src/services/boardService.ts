@@ -3,6 +3,7 @@ import Board = require("../models/Board");
 import Workspace = require("../models/Workspace");
 
 interface BoardColumnInput {
+  _id?: string;
   title: string;
   order: number;
 }
@@ -109,10 +110,18 @@ const getBoardForAdmin = async (boardId: string, userId: string) => {
 };
 
 const normalizeColumns = (columns: BoardColumnInput[]) => {
-  return columns.map((column) => ({
-    title: column.title.trim(),
-    order: column.order,
-  }));
+  return columns.map((column) => {
+    const normalizedColumn: BoardColumnInput = {
+      title: column.title.trim(),
+      order: column.order,
+    };
+
+    if (column._id !== undefined) {
+      normalizedColumn._id = column._id;
+    }
+
+    return normalizedColumn;
+  });
 };
 
 const createBoard = async ({
@@ -149,6 +158,7 @@ const getBoardsByWorkspace = async (workspaceId: string, userId: string) => {
   return populateBoard(
     Board.find({
       workspace: workspaceId,
+      isArchived: false,
     }).sort({ updatedAt: -1 }),
   );
 };

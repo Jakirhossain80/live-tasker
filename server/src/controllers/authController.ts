@@ -59,6 +59,49 @@ const validateLoginBody = (body: Request["body"]) => {
   return null;
 };
 
+const validateUpdateMeBody = (body: Request["body"]) => {
+  if (body.name !== undefined) {
+    if (!isStringWithValue(body.name)) {
+      return "Name is required";
+    }
+
+    if (body.name.trim().length < 2) {
+      return "Name must be at least 2 characters";
+    }
+  }
+
+  if (body.email !== undefined) {
+    if (!isStringWithValue(body.email)) {
+      return "Email is required";
+    }
+
+    const normalizedEmail = body.email.trim();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      return "Email must be valid";
+    }
+  }
+
+  return null;
+};
+
+const validateUpdatePasswordBody = (body: Request["body"]) => {
+  if (!isStringWithValue(body.currentPassword)) {
+    return "Current password is required";
+  }
+
+  if (!isStringWithValue(body.newPassword)) {
+    return "New password is required";
+  }
+
+  if (body.newPassword.length < 6) {
+    return "New password must be at least 6 characters";
+  }
+
+  return null;
+};
+
 const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
   res.cookie(
     authService.refreshTokenCookieName,
@@ -168,10 +211,67 @@ const me = asyncHandler(async (req, res) => {
   });
 });
 
+const updateMe = asyncHandler(async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+
+  if (!authReq.user) {
+    res.status(401);
+    throw new Error("Authentication is required");
+  }
+
+  const validationError = validateUpdateMeBody(req.body);
+
+  if (validationError) {
+    res.status(400);
+    throw new Error(validationError);
+  }
+
+  const user = await authService.updateMe(authReq.user.id, {
+    name: req.body.name,
+    email: req.body.email,
+  });
+
+  res.json({
+    success: true,
+    message: "Profile updated successfully",
+    data: {
+      user,
+    },
+  });
+});
+
+const updatePassword = asyncHandler(async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+
+  if (!authReq.user) {
+    res.status(401);
+    throw new Error("Authentication is required");
+  }
+
+  const validationError = validateUpdatePasswordBody(req.body);
+
+  if (validationError) {
+    res.status(400);
+    throw new Error(validationError);
+  }
+
+  await authService.updatePassword(authReq.user.id, {
+    currentPassword: req.body.currentPassword,
+    newPassword: req.body.newPassword,
+  });
+
+  res.json({
+    success: true,
+    message: "Password updated successfully",
+  });
+});
+
 export = {
   register,
   login,
   refresh,
   logout,
   me,
+  updateMe,
+  updatePassword,
 };

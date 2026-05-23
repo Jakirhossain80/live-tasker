@@ -14,6 +14,17 @@ interface IBoard {
   isArchived: boolean;
 }
 
+const defaultBoardColumns: IBoardColumn[] = [
+  { title: "Todo", order: 0 },
+  { title: "In Progress", order: 1 },
+  { title: "Review", order: 2 },
+  { title: "Done", order: 3 },
+];
+
+const getDefaultBoardColumns = () => {
+  return defaultBoardColumns.map((column) => ({ ...column }));
+};
+
 const boardColumnSchema = new mongoose.Schema<IBoardColumn>(
   {
     title: {
@@ -55,11 +66,7 @@ const boardSchema = new mongoose.Schema<IBoard>(
     },
     columns: {
       type: [boardColumnSchema],
-      default: [
-        { title: "To Do", order: 0 },
-        { title: "In Progress", order: 1 },
-        { title: "Done", order: 2 },
-      ],
+      default: getDefaultBoardColumns,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

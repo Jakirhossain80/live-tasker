@@ -57,7 +57,11 @@ const validateColumns = (columns: unknown) => {
       return "Each board column must be an object";
     }
 
-    const boardColumn = column as { title?: unknown; order?: unknown };
+    const boardColumn = column as { _id?: unknown; title?: unknown; order?: unknown };
+
+    if (boardColumn._id !== undefined && typeof boardColumn._id !== "string") {
+      return "Board column id must be a string";
+    }
 
     if (!isStringWithValue(boardColumn.title)) {
       return "Each board column title is required";
@@ -165,7 +169,7 @@ const createBoard = asyncHandler(async (req, res) => {
     userId: string;
     name: string;
     description?: string;
-    columns?: { title: string; order: number }[];
+    columns?: { _id?: string; title: string; order: number }[];
   } = {
     workspaceId: getRouteParam(req, "workspaceId"),
     userId: getAuthUserId(req),
@@ -232,7 +236,7 @@ const updateBoard = asyncHandler(async (req, res) => {
     userId: string;
     name?: string;
     description?: string;
-    columns?: { title: string; order: number }[];
+    columns?: { _id?: string; title: string; order: number }[];
     isArchived?: boolean;
   } = {
     boardId: getRouteParam(req, "boardId"),

@@ -41,6 +41,11 @@ interface RemoveMemberInput {
   userId: string;
 }
 
+interface ArchiveWorkspaceInput {
+  workspaceId: string;
+  userId: string;
+}
+
 const createHttpError = (message: string, statusCode: number) => {
   const error = new Error(message);
   Object.assign(error, { statusCode });
@@ -74,6 +79,16 @@ const ensureWorkspaceAdmin = (workspace: any, userId: string) => {
 
   if (member.role !== "owner" && member.role !== "admin") {
     throw createHttpError("Only workspace owners and admins can do this", 403);
+  }
+
+  return member;
+};
+
+const ensureWorkspaceOwner = (workspace: any, userId: string) => {
+  const member = ensureWorkspaceMember(workspace, userId);
+
+  if (member.role !== "owner") {
+    throw createHttpError("Only workspace owners can do this", 403);
   }
 
   return member;
@@ -181,6 +196,16 @@ const updateWorkspace = async ({
   return populateWorkspace(Workspace.findById(workspace._id));
 };
 
+const archiveWorkspace = async ({ workspaceId, userId }: ArchiveWorkspaceInput) => {
+  const workspace = await getWorkspaceForMember(workspaceId, userId);
+  ensureWorkspaceOwner(workspace, userId);
+
+  workspace.isArchived = true;
+  await workspace.save();
+
+  return populateWorkspace(Workspace.findById(workspace._id));
+};
+
 const addMember = async ({
   workspaceId,
   actorId,
@@ -282,6 +307,7 @@ export = {
   getWorkspaces,
   getWorkspaceById,
   updateWorkspace,
+  archiveWorkspace,
   addMember,
   updateMember,
   removeMember,

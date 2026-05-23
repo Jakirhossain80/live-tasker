@@ -1,8 +1,13 @@
 import { Bell, Grid3X3, LogOut, Menu, Search } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/auth.store'
 
-function TopNavbar() {
+type TopNavbarProps = {
+  onMenuClick?: () => void
+  isSidebarOpen: boolean
+}
+
+function TopNavbar({ onMenuClick, isSidebarOpen }: TopNavbarProps) {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
@@ -28,13 +33,17 @@ function TopNavbar() {
       <div className="flex items-center gap-3">
         <button
           type="button"
+          onClick={onMenuClick}
           className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 md:hidden"
           aria-label="Open sidebar"
+          aria-expanded={isSidebarOpen}
         >
           <Menu className="h-5 w-5" />
         </button>
 
-        <h1 className="text-xl font-bold text-slate-950">LiveTasker</h1>
+        <h1 className="text-xl font-bold text-slate-950">
+          <Link to="/">LiveTasker</Link>
+        </h1>
       </div>
 
       <div className="hidden w-full max-w-md items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 md:flex">

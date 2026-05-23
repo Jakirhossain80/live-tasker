@@ -1,7 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { getComments, type Comment } from '../../api/comments'
+import { getWorkspaceActivity, type ActivityLog } from '../../api/activity'
+import { createComment, getComments, type Comment } from '../../api/comments'
 import { getTaskById, type Task } from '../../api/tasks'
 import TaskActionButtons from '../../components/task-details/TaskActionButtons'
 import TaskActivityHistory from '../../components/task-details/TaskActivityHistory'
@@ -25,6 +26,22 @@ function getCommentTaskId(comment: Comment) {
 
 function getTaskBoardId(task: Task) {
   return typeof task.board === 'string' ? task.board : task.board._id
+}
+
+function getTaskWorkspaceId(task: Task) {
+  return typeof task.workspace === 'string' ? task.workspace : task.workspace._id
+}
+
+function getActivityTaskId(activity: ActivityLog) {
+  if (typeof activity.task === 'string') {
+    return activity.task
+  }
+
+  if (activity.task) {
+    return activity.task._id
+  }
+
+  return activity.entityType === 'task' ? activity.entityId : undefined
 }
 
 function upsertComment(comments: Comment[], nextComment: Comment) {
@@ -56,6 +73,31 @@ function TaskDetails() {
     enabled: hasValidTaskId,
   })
   const boardId = task ? getTaskBoardId(task) : undefined
+  const workspaceId = task ? getTaskWorkspaceId(task) : undefined
+  const {
+    data: activity,
+    isLoading: isActivityLoading,
+    isError: isActivityError,
+    error: activityError,
+  } = useQuery({
+    queryKey: ['workspace-activity', workspaceId],
+    queryFn: () => getWorkspaceActivity(workspaceId as string),
+    enabled: Boolean(workspaceId),
+  })
+  const taskActivity =
+    hasValidTaskId && taskId ? (activity ?? []).filter((activityLog) => getActivityTaskId(activityLog) === taskId) : []
+  const createCommentMutation = useMutation({
+    mutationFn: (content: string) => createComment(taskId as string, { content }),
+    onSuccess: (comment) => {
+      queryClient.setQueryData<Comment[]>(['comments', taskId], (currentComments = []) =>
+        upsertComment(currentComments, comment),
+      )
+
+      if (workspaceId) {
+        void queryClient.invalidateQueries({ queryKey: ['workspace-activity', workspaceId] })
+      }
+    },
+  })
 
   useEffect(() => {
     if (!boardId || !isConnected) {
@@ -84,6 +126,10 @@ function TaskDetails() {
       queryClient.setQueryData<Comment[]>(['comments', taskId], (currentComments = []) =>
         upsertComment(currentComments, payload.comment),
       )
+
+      if (workspaceId) {
+        void queryClient.invalidateQueries({ queryKey: ['workspace-activity', workspaceId] })
+      }
     }
 
     socket.on('commentAdded', handleCommentAdded)
@@ -91,7 +137,7 @@ function TaskDetails() {
     return () => {
       socket.off('commentAdded', handleCommentAdded)
     }
-  }, [hasValidTaskId, queryClient, socket, taskId])
+  }, [hasValidTaskId, queryClient, socket, taskId, workspaceId])
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-6">
@@ -103,6 +149,12 @@ function TaskDetails() {
           <TaskDiscussion
             comments={hasValidTaskId ? comments ?? [] : undefined}
             isLoading={areCommentsLoading}
+            isSubmitting={createCommentMutation.isPending}
+            onSubmitComment={(content) => {
+              if (hasValidTaskId) {
+                createCommentMutation.mutate(content)
+              }
+            }}
             errorMessage={
               isCommentsError
                 ? commentsError instanceof Error
@@ -114,9 +166,19 @@ function TaskDetails() {
         </div>
 
         <aside className="space-y-6 lg:col-span-4">
-          <TaskProperties />
+          <TaskProperties assignees={task?.assignees} />
           <TaskActionButtons />
-          <TaskActivityHistory />
+          <TaskActivityHistory
+            activities={workspaceId ? taskActivity : undefined}
+            isLoading={isActivityLoading}
+            errorMessage={
+              isActivityError
+                ? activityError instanceof Error
+                  ? activityError.message
+                  : 'Could not load activity.'
+                : undefined
+            }
+          />
         </aside>
       </div>
     </div>

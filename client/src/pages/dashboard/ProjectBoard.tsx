@@ -310,10 +310,14 @@ function getTaskMoveSignature(boardId: string, taskId: string, status: string, o
   return `${boardId}:${taskId}:${status}:${order}`
 }
 
+function getAssigneeId(assignee: Task['assignees'][number]) {
+  return typeof assignee === 'string' ? assignee : assignee._id
+}
+
 function getTaskListSignature(tasks: Task[]) {
   return tasks
     .map((task) => {
-      const assigneeIds = task.assignees.map((assignee) => assignee._id).join(',')
+      const assigneeIds = task.assignees.map(getAssigneeId).join(',')
       const labels = task.labels.join(',')
 
       return [

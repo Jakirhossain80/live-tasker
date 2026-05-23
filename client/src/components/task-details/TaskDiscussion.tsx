@@ -1,4 +1,5 @@
 import { MessageSquare, Paperclip, Send } from 'lucide-react'
+import { type FormEvent, useState } from 'react'
 import type { Comment } from '../../api/comments'
 
 const fallbackComments = [
@@ -23,6 +24,8 @@ type TaskDiscussionProps = {
   comments?: Comment[]
   isLoading?: boolean
   errorMessage?: string
+  isSubmitting?: boolean
+  onSubmitComment?: (content: string) => void
 }
 
 function getAuthorName(comment: Comment) {
@@ -45,8 +48,28 @@ function formatCommentTime(createdAt: string) {
   }).format(new Date(createdAt))
 }
 
-function TaskDiscussion({ comments, isLoading = false, errorMessage }: TaskDiscussionProps) {
+function TaskDiscussion({
+  comments,
+  isLoading = false,
+  errorMessage,
+  isSubmitting = false,
+  onSubmitComment,
+}: TaskDiscussionProps) {
   const hasLiveComments = Array.isArray(comments)
+  const [content, setContent] = useState('')
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const trimmedContent = content.trim()
+
+    if (!trimmedContent || isSubmitting) {
+      return
+    }
+
+    onSubmitComment?.(trimmedContent)
+    setContent('')
+  }
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -121,7 +144,7 @@ function TaskDiscussion({ comments, isLoading = false, errorMessage }: TaskDiscu
         )}
       </div>
 
-      <div className="mt-6 flex gap-3 border-t border-slate-200 pt-5">
+      <form className="mt-6 flex gap-3 border-t border-slate-200 pt-5" onSubmit={handleSubmit}>
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600">
           AR
         </div>
@@ -129,6 +152,8 @@ function TaskDiscussion({ comments, isLoading = false, errorMessage }: TaskDiscu
           <textarea
             rows={3}
             placeholder="Write a comment..."
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
             className="min-h-20 w-full resize-none bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
           />
           <div className="mt-3 flex items-center justify-between gap-3">
@@ -140,15 +165,16 @@ function TaskDiscussion({ comments, isLoading = false, errorMessage }: TaskDiscu
               <Paperclip className="h-4 w-4" />
             </button>
             <button
-              type="button"
+              type="submit"
+              disabled={isSubmitting || content.trim().length === 0}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700"
             >
               <Send className="h-4 w-4" />
-              Send
+              {isSubmitting ? 'Sending' : 'Send'}
             </button>
           </div>
         </div>
-      </div>
+      </form>
     </section>
   )
 }

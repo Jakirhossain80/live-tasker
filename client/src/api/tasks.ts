@@ -24,7 +24,7 @@ export type Task = {
   status: string
   title: string
   description?: string
-  assignees: TaskUser[]
+  assignees: Array<TaskUser | string>
   priority: TaskPriority
   dueDate?: string
   labels: string[]

@@ -23,6 +23,11 @@ type NavigationItem = {
   activePaths?: string[]
 }
 
+type SidebarProps = {
+  isMobileOpen?: boolean
+  onClose?: () => void
+}
+
 const selectedWorkspaceStorageKey = 'livetasker:selectedWorkspaceId'
 
 function getSavedWorkspaceId() {
@@ -58,7 +63,7 @@ function isNavigationItemActive(item: NavigationItem, pathname: string) {
   return matchPath({ path: item.to, end: item.to === '/dashboard' }, pathname)
 }
 
-function Sidebar() {
+function Sidebar({ isMobileOpen = false, onClose }: SidebarProps) {
   const location = useLocation()
   const { data: workspaces } = useQuery({
     queryKey: ['workspaces'],
@@ -82,7 +87,21 @@ function Sidebar() {
   const navigationItems = getNavigationItems()
 
   return (
-    <aside className="fixed bottom-0 left-0 top-16 z-40 hidden w-[280px] border-r border-slate-200 bg-white shadow-sm md:flex md:flex-col">
+    <>
+      {isMobileOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 top-16 z-30 bg-slate-900/30 md:hidden"
+          aria-label="Close sidebar"
+          onClick={onClose}
+        />
+      ) : null}
+
+      <aside
+        className={`fixed bottom-0 left-0 top-16 z-40 flex w-[280px] flex-col border-r border-slate-200 bg-white shadow-sm transition-transform md:flex md:flex-col md:translate-x-0 ${
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
       <div className="px-4 py-5">
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-center gap-3">
@@ -100,6 +119,7 @@ function Sidebar() {
           <Link
             to={`/dashboard/boards/${newTaskBoardId}`}
             state={{ openCreateTask: true }}
+            onClick={onClose}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
           >
             <Plus className="h-4 w-4" />
@@ -127,6 +147,7 @@ function Sidebar() {
             <NavLink
               key={item.label}
               to={item.to}
+              onClick={onClose}
               className={() =>
                 `flex items-center gap-3 border-l-4 px-3 py-2.5 text-sm font-medium transition ${
                   isActive
@@ -145,13 +166,15 @@ function Sidebar() {
       <div className="border-t border-slate-200 p-4">
         <NavLink
           to="/help"
+          onClick={onClose}
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-950"
         >
           <CircleHelp className="h-5 w-5" />
           Help & Feedback
         </NavLink>
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }
 

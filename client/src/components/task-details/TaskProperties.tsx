@@ -1,6 +1,30 @@
 import { ChevronDown, Plus } from 'lucide-react'
+import type { TaskUser } from '../../api/tasks'
 
-function TaskProperties() {
+type TaskPropertiesProps = {
+  assignees?: Array<TaskUser | string>
+}
+
+function getAssigneeName(assignee: TaskUser | string) {
+  return typeof assignee === 'string' ? 'Workspace member' : assignee.name
+}
+
+function getAssigneeEmail(assignee: TaskUser | string) {
+  return typeof assignee === 'string' ? assignee : assignee.email
+}
+
+function getAssigneeInitials(assignee: TaskUser | string) {
+  return getAssigneeName(assignee)
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function TaskProperties({ assignees }: TaskPropertiesProps) {
+  const primaryAssignee = assignees?.[0]
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Properties</h3>
@@ -10,11 +34,15 @@ function TaskProperties() {
           <h4 className="text-sm font-semibold text-slate-950">Assigned To</h4>
           <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
-              SC
+              {primaryAssignee ? getAssigneeInitials(primaryAssignee) : '--'}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-950">Sarah Chen</p>
-              <p className="text-xs text-slate-500">Documentation Lead</p>
+              <p className="truncate text-sm font-semibold text-slate-950">
+                {primaryAssignee ? getAssigneeName(primaryAssignee) : 'Unassigned'}
+              </p>
+              <p className="text-xs text-slate-500">
+                {primaryAssignee ? getAssigneeEmail(primaryAssignee) : 'No member assigned'}
+              </p>
             </div>
           </div>
           <button

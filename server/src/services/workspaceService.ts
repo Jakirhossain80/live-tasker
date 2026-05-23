@@ -41,6 +41,11 @@ interface RemoveMemberInput {
   userId: string;
 }
 
+interface JoinWorkspaceInput {
+  workspaceId: string;
+  userId: string;
+}
+
 interface ArchiveWorkspaceInput {
   workspaceId: string;
   userId: string;
@@ -251,6 +256,36 @@ const addMember = async ({
   return populateWorkspace(Workspace.findById(workspace._id));
 };
 
+const joinWorkspace = async ({ workspaceId, userId }: JoinWorkspaceInput) => {
+  validateObjectId(workspaceId, "workspace id");
+  validateObjectId(userId, "user id");
+
+  const [workspace, user] = await Promise.all([
+    Workspace.findById(workspaceId),
+    User.findById(userId),
+  ]);
+
+  if (!workspace) {
+    throw createHttpError("Workspace not found", 404);
+  }
+
+  if (!user || !user.isActive) {
+    throw createHttpError("User not found", 404);
+  }
+
+  if (!getMember(workspace, userId)) {
+    workspace.members.push({
+      user: (user as any)._id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+
+    await workspace.save();
+  }
+
+  return populateWorkspace(Workspace.findById(workspace._id));
+};
+
 const updateMember = async ({
   workspaceId,
   actorId,
@@ -309,6 +344,7 @@ export = {
   updateWorkspace,
   archiveWorkspace,
   addMember,
+  joinWorkspace,
   updateMember,
   removeMember,
 };

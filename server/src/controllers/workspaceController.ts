@@ -273,6 +273,21 @@ const addMember = asyncHandler(async (req, res) => {
   });
 });
 
+const joinWorkspace = asyncHandler(async (req, res) => {
+  const workspace = await workspaceService.joinWorkspace({
+    workspaceId: getRouteParam(req, "workspaceId"),
+    userId: getAuthUserId(req),
+  });
+
+  res.json({
+    success: true,
+    message: "Workspace joined successfully",
+    data: {
+      workspace,
+    },
+  });
+});
+
 const updateMember = asyncHandler(async (req, res) => {
   const validationError = validateUpdateMemberBody(req.body);
 
@@ -317,6 +332,7 @@ export = {
   updateWorkspace,
   archiveWorkspace,
   addMember,
+  joinWorkspace,
   updateMember,
   removeMember,
 };

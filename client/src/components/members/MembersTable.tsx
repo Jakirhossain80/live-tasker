@@ -2,9 +2,21 @@ import MemberTableRow, { type Member } from './MemberTableRow'
 
 type MembersTableProps = {
   members: Member[]
+  actionMemberId?: string
+  currentUserId?: string
+  isActionPending?: boolean
+  onChangeMemberRole: (member: Member) => void
+  onRemoveMember: (member: Member) => void
 }
 
-function MembersTable({ members }: MembersTableProps) {
+function MembersTable({
+  members,
+  actionMemberId,
+  currentUserId,
+  isActionPending = false,
+  onChangeMemberRole,
+  onRemoveMember,
+}: MembersTableProps) {
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -34,7 +46,14 @@ function MembersTable({ members }: MembersTableProps) {
           </thead>
           <tbody>
             {members.map((member) => (
-              <MemberTableRow key={member.id} member={member} />
+              <MemberTableRow
+                key={member.id}
+                member={member}
+                isCurrentUser={member.id === currentUserId}
+                isActionPending={isActionPending && actionMemberId === member.id}
+                onChangeRole={onChangeMemberRole}
+                onRemove={onRemoveMember}
+              />
             ))}
           </tbody>
         </table>

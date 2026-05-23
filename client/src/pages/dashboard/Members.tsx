@@ -6,7 +6,10 @@ import {
   addWorkspaceMember,
   getWorkspaceById,
   getWorkspaces,
+  removeWorkspaceMember,
+  updateWorkspaceMember,
   type Workspace,
+  type ManageableWorkspaceMemberRole,
   type WorkspaceMemberRole,
 } from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
@@ -18,6 +21,7 @@ import MembersTable from '../../components/members/MembersTable'
 import type { Member, MemberRole } from '../../components/members/MemberTableRow'
 import QuickInviteCard from '../../components/members/QuickInviteCard'
 import UpgradeSeatsCard from '../../components/members/UpgradeSeatsCard'
+import { useAuthStore } from '../../store/auth.store'
 
 const avatarClassNames = [
   'bg-indigo-100 text-indigo-700',
@@ -61,6 +65,18 @@ function formatRole(role: WorkspaceMemberRole): MemberRole {
   return 'Member'
 }
 
+function getManageableRole(role: MemberRole): ManageableWorkspaceMemberRole | undefined {
+  if (role === 'Admin') {
+    return 'admin'
+  }
+
+  if (role === 'Member') {
+    return 'member'
+  }
+
+  return undefined
+}
+
 function formatJoinedAt(joinedAt: string) {
   return new Intl.DateTimeFormat('en', {
     month: 'short',
@@ -93,16 +109,17 @@ function mapWorkspaceMembers(workspace: Workspace): Member[] {
   })
 }
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(error: unknown, fallbackMessage = 'Could not add workspace member.') {
   if (isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message || error.message
   }
 
-  return error instanceof Error ? error.message : 'Could not add workspace member.'
+  return error instanceof Error ? error.message : fallbackMessage
 }
 
 function Members() {
   const queryClient = useQueryClient()
+  const currentUser = useAuthStore((state) => state.user)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [inviteErrorMessage, setInviteErrorMessage] = useState<string>()
 
@@ -164,6 +181,55 @@ function Members() {
     },
     onError: (mutationError) => {
       setInviteErrorMessage(getErrorMessage(mutationError))
+    },
+  })
+
+  const updateMemberRoleMutation = useMutation({
+    mutationFn: ({ member, role }: { member: Member; role: ManageableWorkspaceMemberRole }) => {
+      if (!selectedWorkspaceId) {
+        throw new Error('Select a workspace before updating members.')
+      }
+
+      return updateWorkspaceMember(selectedWorkspaceId, member.id, { role })
+    },
+    onSuccess: async (updatedWorkspace) => {
+      queryClient.setQueryData(['workspace', updatedWorkspace._id], updatedWorkspace)
+      queryClient.setQueryData<Workspace[]>(['workspaces'], (currentWorkspaces) => {
+        if (!currentWorkspaces) {
+          return currentWorkspaces
+        }
+
+        return currentWorkspaces.map((currentWorkspace) =>
+          currentWorkspace._id === updatedWorkspace._id ? updatedWorkspace : currentWorkspace,
+        )
+      })
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['workspace', updatedWorkspace._id] }),
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+      ])
+    },
+    onError: (mutationError) => {
+      window.alert(getErrorMessage(mutationError, 'Could not update member role.'))
+    },
+  })
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (member: Member) => {
+      if (!selectedWorkspaceId) {
+        throw new Error('Select a workspace before removing members.')
+      }
+
+      return removeWorkspaceMember(selectedWorkspaceId, member.id)
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['workspace', selectedWorkspaceId] }),
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+      ])
+    },
+    onError: (mutationError) => {
+      window.alert(getErrorMessage(mutationError, 'Could not remove workspace member.'))
     },
   })
 
@@ -229,6 +295,53 @@ function Members() {
     addMemberMutation.mutate(payload)
   }
 
+  function handleChangeMemberRole(member: Member) {
+    const currentRole = getManageableRole(member.role)
+
+    if (!currentRole) {
+      window.alert('Owner roles cannot be changed from this menu.')
+      return
+    }
+
+    const requestedRole = window.prompt('Change role to admin or member:', currentRole)?.trim().toLowerCase()
+
+    if (!requestedRole) {
+      return
+    }
+
+    if (requestedRole !== 'admin' && requestedRole !== 'member') {
+      window.alert('Role must be admin or member.')
+      return
+    }
+
+    if (requestedRole === currentRole) {
+      return
+    }
+
+    updateMemberRoleMutation.mutate({
+      member,
+      role: requestedRole,
+    })
+  }
+
+  function handleRemoveMember(member: Member) {
+    if (member.role === 'Owner') {
+      window.alert('Workspace owners cannot be removed from this menu.')
+      return
+    }
+
+    if (member.id === currentUser?.id) {
+      window.alert('You cannot remove yourself from this workspace from this menu.')
+      return
+    }
+
+    const shouldRemoveMember = window.confirm(`Remove ${member.name} from this workspace?`)
+
+    if (shouldRemoveMember) {
+      removeMemberMutation.mutate(member)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -254,7 +367,14 @@ function Members() {
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
           {members.length > 0 ? (
-            <MembersTable members={members} />
+            <MembersTable
+              members={members}
+              actionMemberId={updateMemberRoleMutation.variables?.member.id ?? removeMemberMutation.variables?.id}
+              isActionPending={updateMemberRoleMutation.isPending || removeMemberMutation.isPending}
+              currentUserId={currentUser?.id}
+              onChangeMemberRole={handleChangeMemberRole}
+              onRemoveMember={handleRemoveMember}
+            />
           ) : (
             <EmptyState icon={Users} title="No members yet" message="Workspace members will appear here." />
           )}

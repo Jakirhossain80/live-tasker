@@ -13,6 +13,7 @@ import ProjectBoard from '../pages/dashboard/ProjectBoard'
 import Settings from '../pages/dashboard/Settings'
 import TaskDetails from '../pages/dashboard/TaskDetails'
 import Workspaces from '../pages/dashboard/Workspaces'
+import JoinWorkspace from '../pages/JoinWorkspace'
 import Landing from '../pages/public/Landing'
 
 export const router = createBrowserRouter([
@@ -39,6 +40,10 @@ export const router = createBrowserRouter([
         <Register />
       </PublicOnlyRoute>
     ),
+  },
+  {
+    path: '/join/:inviteCode',
+    element: <JoinWorkspace />,
   },
   {
     path: '/dashboard',

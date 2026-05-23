@@ -1,7 +1,7 @@
 import { Eye, LockKeyhole, Mail } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import { loginUser } from '../../api/auth'
 import AuthCard from '../../components/auth/AuthCard'
@@ -13,8 +13,25 @@ type ApiErrorResponse = {
   message?: string
 }
 
+type RedirectLocationState = {
+  from?: {
+    pathname?: string
+  }
+}
+
+const pendingInviteCodeStorageKey = 'livetasker.pendingInviteCode'
+
+function getPendingInviteCode() {
+  try {
+    return window.localStorage.getItem(pendingInviteCodeStorageKey)
+  } catch {
+    return null
+  }
+}
+
 function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const setAuth = useAuthStore((state) => state.setAuth)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,7 +47,15 @@ function Login() {
       const { user, accessToken } = await loginUser({ email, password })
 
       setAuth(user, accessToken)
-      navigate('/dashboard')
+      const pendingInviteCode = getPendingInviteCode()
+      const from = (location.state as RedirectLocationState | null)?.from?.pathname
+
+      if (pendingInviteCode) {
+        navigate(`/join/${encodeURIComponent(pendingInviteCode)}`, { replace: true })
+        return
+      }
+
+      navigate(from || '/dashboard', { replace: Boolean(from) })
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorResponse>
       const message = axiosError.response?.data?.message ?? 'Unable to sign in. Please check your email and password.'
@@ -137,6 +162,7 @@ function Login() {
           Don't have an account?{' '}
           <Link
             to="/register"
+            state={location.state}
             className="rounded-md font-semibold text-indigo-600 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
           >
             Create an account

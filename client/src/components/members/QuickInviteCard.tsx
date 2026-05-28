@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Copy, Link2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 type QuickInviteCardProps = {
   workspaceId: string
@@ -36,11 +37,16 @@ function QuickInviteCard({ workspaceId }: QuickInviteCardProps) {
   const inviteLink = useMemo(() => getInviteLink(workspaceId), [workspaceId])
 
   async function copyInviteLink() {
-    await writeToClipboard(inviteLink)
-    setWasCopied(true)
-    window.setTimeout(() => {
-      setWasCopied(false)
-    }, 2000)
+    try {
+      await writeToClipboard(inviteLink)
+      setWasCopied(true)
+      toast.success('Invite link copied.')
+      window.setTimeout(() => {
+        setWasCopied(false)
+      }, 2000)
+    } catch {
+      toast.error('Could not copy invite link.')
+    }
   }
 
   return (

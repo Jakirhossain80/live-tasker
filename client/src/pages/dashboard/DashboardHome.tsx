@@ -8,7 +8,7 @@ import { getTasks, type Task } from '../../api/tasks'
 import { getWorkspaces } from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
-import LoadingState from '../../components/common/LoadingState'
+import PageSkeleton from '../../components/common/PageSkeleton'
 import ActivityFeed from '../../components/dashboard/ActivityFeed'
 import StatsCard from '../../components/dashboard/StatsCard'
 import TaskCard from '../../components/dashboard/TaskCard'
@@ -248,11 +248,7 @@ function DashboardHome() {
   }, [isConnected, queryClient, selectedBoardId, selectedWorkspaceId, socket])
 
   if (isLoading) {
-    return (
-      <div className="mx-auto max-w-7xl">
-        <LoadingState title="Loading dashboard" message="Fetching your workspace dashboard data." />
-      </div>
-    )
+    return <PageSkeleton />
   }
 
   if (hasError) {

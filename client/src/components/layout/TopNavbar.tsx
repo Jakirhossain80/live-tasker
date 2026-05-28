@@ -1,5 +1,6 @@
 import { Bell, Grid3X3, LogOut, Menu, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { useAuthStore } from '../../store/auth.store'
 
 type TopNavbarProps = {
@@ -21,6 +22,7 @@ function TopNavbar({ onMenuClick, isSidebarOpen }: TopNavbarProps) {
 
   async function handleLogout() {
     await logout()
+    toast.success('Signed out successfully.')
     navigate('/login', { replace: true })
   }
 

@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom'
+import ErrorFallback from '../components/common/ErrorFallback'
 import ProtectedRoute, { PublicOnlyRoute } from '../components/guards/ProtectedRoute'
 import DashboardLayout from '../layouts/DashboardLayout'
 import Login from '../pages/auth/Login'
@@ -20,10 +21,12 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <Landing />,
+    errorElement: <ErrorFallback />,
   },
   {
     path: '/landing',
     element: <Landing />,
+    errorElement: <ErrorFallback />,
   },
   {
     path: '/login',
@@ -32,6 +35,7 @@ export const router = createBrowserRouter([
         <Login />
       </PublicOnlyRoute>
     ),
+    errorElement: <ErrorFallback />,
   },
   {
     path: '/register',
@@ -40,10 +44,12 @@ export const router = createBrowserRouter([
         <Register />
       </PublicOnlyRoute>
     ),
+    errorElement: <ErrorFallback />,
   },
   {
     path: '/join/:inviteCode',
     element: <JoinWorkspace />,
+    errorElement: <ErrorFallback />,
   },
   {
     path: '/dashboard',
@@ -52,6 +58,7 @@ export const router = createBrowserRouter([
         <DashboardLayout />
       </ProtectedRoute>
     ),
+    errorElement: <ErrorFallback />,
     children: [
       {
         index: true,
@@ -102,6 +109,7 @@ export const router = createBrowserRouter([
         <DashboardLayout />
       </ProtectedRoute>
     ),
+    errorElement: <ErrorFallback />,
     children: [
       {
         index: true,

@@ -1,6 +1,7 @@
 import { MessageSquare, Paperclip, Send } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import type { Comment } from '../../api/comments'
+import Skeleton, { SkeletonText } from '../common/Skeleton'
 
 const fallbackComments = [
   {
@@ -82,7 +83,15 @@ function TaskDiscussion({
 
       <div className="mt-5 space-y-5">
         {isLoading ? (
-          <p className="text-sm font-medium text-slate-500">Loading comments...</p>
+          Array.from({ length: 2 }).map((_, index) => (
+            <article key={index} className="flex gap-3">
+              <Skeleton className="h-10 w-10 shrink-0" rounded="full" />
+              <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3">
+                <Skeleton className="h-3 w-32" rounded="full" />
+                <SkeletonText lines={2} className="mt-3" />
+              </div>
+            </article>
+          ))
         ) : errorMessage ? (
           <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
             {errorMessage}

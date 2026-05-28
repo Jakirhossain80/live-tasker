@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
+import { toast } from 'sonner'
 import { updateMyPassword } from '../../api/auth'
 
 type ApiErrorResponse = {
@@ -27,7 +28,10 @@ function SecuritySettings({ resetSignal }: SecuritySettingsProps) {
 
   async function handlePasswordUpdate() {
     if (!currentPassword.trim() || !newPassword.trim()) {
-      setMessage('Current password and new password are required.')
+      const nextMessage = 'Current password and new password are required.'
+
+      setMessage(nextMessage)
+      toast.error(nextMessage)
       return
     }
 
@@ -43,17 +47,20 @@ function SecuritySettings({ resetSignal }: SecuritySettingsProps) {
       setCurrentPassword('')
       setNewPassword('')
       setMessage(result.message || 'Password updated successfully.')
+      toast.success(result.message || 'Password updated successfully.')
     } catch (error) {
       if (isAxiosError<ApiErrorResponse>(error)) {
-        setMessage(
-          error.response?.data?.message || error.message || 'Could not update password.',
-        )
+        const nextMessage = error.response?.data?.message || error.message || 'Could not update password.'
+
+        setMessage(nextMessage)
+        toast.error(nextMessage)
         return
       }
 
-      setMessage(
-        error instanceof Error ? error.message : 'Could not update password.',
-      )
+      const nextMessage = error instanceof Error ? error.message : 'Could not update password.'
+
+      setMessage(nextMessage)
+      toast.error(nextMessage)
     } finally {
       setIsSubmitting(false)
     }

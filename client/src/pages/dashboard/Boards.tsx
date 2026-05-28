@@ -6,7 +6,7 @@ import { getBoards, isValidBoardId } from '../../api/boards'
 import { getWorkspaces } from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
-import LoadingState from '../../components/common/LoadingState'
+import CardSkeleton from '../../components/common/CardSkeleton'
 
 const selectedWorkspaceStorageKey = 'livetasker:selectedWorkspaceId'
 
@@ -56,7 +56,7 @@ function Boards() {
   if (areWorkspacesLoading || areBoardsLoading) {
     return (
       <div className="mx-auto max-w-[1440px]">
-        <LoadingState title="Loading board" message="Fetching board columns and tasks from your workspace." />
+        <CardSkeleton rows={4} />
       </div>
     )
   }

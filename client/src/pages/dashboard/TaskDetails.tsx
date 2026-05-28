@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { getWorkspaceActivity, type ActivityLog } from '../../api/activity'
 import { createComment, getComments, type Comment } from '../../api/comments'
 import { getTaskById, type Task } from '../../api/tasks'
+import CardSkeleton from '../../components/common/CardSkeleton'
 import TaskActionButtons from '../../components/task-details/TaskActionButtons'
 import TaskActivityHistory from '../../components/task-details/TaskActivityHistory'
 import TaskDescription from '../../components/task-details/TaskDescription'
@@ -57,7 +59,7 @@ function TaskDetails() {
   const hasValidTaskId = isValidTaskId(taskId)
   const queryClient = useQueryClient()
   const { socket, isConnected } = useSocket()
-  const { data: task } = useQuery({
+  const { data: task, isLoading: isTaskLoading } = useQuery({
     queryKey: ['task', taskId],
     queryFn: () => getTaskById(taskId as string),
     enabled: hasValidTaskId,
@@ -96,6 +98,11 @@ function TaskDetails() {
       if (workspaceId) {
         void queryClient.invalidateQueries({ queryKey: ['workspace-activity', workspaceId] })
       }
+
+      toast.success('Comment added.')
+    },
+    onError: () => {
+      toast.error('Could not add comment.')
     },
   })
 
@@ -138,6 +145,26 @@ function TaskDetails() {
       socket.off('commentAdded', handleCommentAdded)
     }
   }, [hasValidTaskId, queryClient, socket, taskId, workspaceId])
+
+  if (isTaskLoading) {
+    return (
+      <div className="mx-auto max-w-[1440px] space-y-6">
+        <CardSkeleton rows={3} showFooter />
+
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="space-y-6 lg:col-span-8">
+            <CardSkeleton rows={5} />
+            <CardSkeleton rows={4} showFooter />
+          </div>
+
+          <aside className="space-y-6 lg:col-span-4">
+            <CardSkeleton rows={4} />
+            <CardSkeleton rows={2} />
+          </aside>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-6">

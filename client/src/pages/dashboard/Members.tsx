@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { UserPlus, Users } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   addWorkspaceMember,
   getWorkspaceById,
@@ -14,7 +15,7 @@ import {
 } from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
-import LoadingState from '../../components/common/LoadingState'
+import PageSkeleton from '../../components/common/PageSkeleton'
 import InviteMemberModal, { type InviteMemberPayload } from '../../components/members/InviteMemberModal'
 import MembersStats from '../../components/members/MembersStats'
 import MembersTable from '../../components/members/MembersTable'
@@ -173,6 +174,7 @@ function Members() {
 
       setIsInviteModalOpen(false)
       setInviteErrorMessage(undefined)
+      toast.success('Member invited.')
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['workspace', updatedWorkspace._id] }),
@@ -180,7 +182,10 @@ function Members() {
       ])
     },
     onError: (mutationError) => {
-      setInviteErrorMessage(getErrorMessage(mutationError))
+      const message = getErrorMessage(mutationError)
+
+      setInviteErrorMessage(message)
+      toast.error(message)
     },
   })
 
@@ -208,9 +213,13 @@ function Members() {
         queryClient.invalidateQueries({ queryKey: ['workspace', updatedWorkspace._id] }),
         queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
       ])
+      toast.success('Member role updated.')
     },
     onError: (mutationError) => {
-      window.alert(getErrorMessage(mutationError, 'Could not update member role.'))
+      const message = getErrorMessage(mutationError, 'Could not update member role.')
+
+      toast.error(message)
+      window.alert(message)
     },
   })
 
@@ -227,9 +236,13 @@ function Members() {
         queryClient.invalidateQueries({ queryKey: ['workspace', selectedWorkspaceId] }),
         queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
       ])
+      toast.success('Member removed.')
     },
     onError: (mutationError) => {
-      window.alert(getErrorMessage(mutationError, 'Could not remove workspace member.'))
+      const message = getErrorMessage(mutationError, 'Could not remove workspace member.')
+
+      toast.error(message)
+      window.alert(message)
     },
   })
 
@@ -238,11 +251,7 @@ function Members() {
   const error = workspacesError || workspaceError
 
   if (isLoading) {
-    return (
-      <div className="mx-auto max-w-6xl">
-        <LoadingState title="Loading members" message="Fetching workspace member details." />
-      </div>
-    )
+    return <PageSkeleton className="max-w-6xl" showTable titleWidthClassName="w-56" />
   }
 
   if (hasError) {
@@ -299,7 +308,10 @@ function Members() {
     const currentRole = getManageableRole(member.role)
 
     if (!currentRole) {
-      window.alert('Owner roles cannot be changed from this menu.')
+      const message = 'Owner roles cannot be changed from this menu.'
+
+      toast.error(message)
+      window.alert(message)
       return
     }
 
@@ -310,7 +322,10 @@ function Members() {
     }
 
     if (requestedRole !== 'admin' && requestedRole !== 'member') {
-      window.alert('Role must be admin or member.')
+      const message = 'Role must be admin or member.'
+
+      toast.error(message)
+      window.alert(message)
       return
     }
 
@@ -326,12 +341,18 @@ function Members() {
 
   function handleRemoveMember(member: Member) {
     if (member.role === 'Owner') {
-      window.alert('Workspace owners cannot be removed from this menu.')
+      const message = 'Workspace owners cannot be removed from this menu.'
+
+      toast.error(message)
+      window.alert(message)
       return
     }
 
     if (member.id === currentUser?.id) {
-      window.alert('You cannot remove yourself from this workspace from this menu.')
+      const message = 'You cannot remove yourself from this workspace from this menu.'
+
+      toast.error(message)
+      window.alert(message)
       return
     }
 

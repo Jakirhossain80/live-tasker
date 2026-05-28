@@ -1,8 +1,9 @@
 import { AxiosError } from 'axios'
-import { Circle, Eye, LockKeyhole, Mail, UserRound } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { registerUser } from '../../api/auth'
 import AuthCard from '../../components/auth/AuthCard'
 import AuthFooterLinks from '../../components/auth/AuthFooterLinks'
@@ -37,6 +38,8 @@ function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -66,6 +69,7 @@ function Register() {
       const { user, accessToken } = await registerUser({ name, email, password })
 
       setAuth(user, accessToken)
+      toast.success('Account created successfully.')
       const pendingInviteCode = getPendingInviteCode()
       const from = (location.state as RedirectLocationState | null)?.from?.pathname
 
@@ -80,6 +84,7 @@ function Register() {
       const message = axiosError.response?.data?.message ?? 'Unable to create your account. Please try again.'
 
       setErrorMessage(message)
+      toast.error(message)
     } finally {
       setIsSubmitting(false)
     }
@@ -88,20 +93,6 @@ function Register() {
   return (
     <AuthShell>
       <AuthCard title="Create your account" subtitle="Join thousands of teams managing tasks efficiently.">
-        <button
-          type="button"
-          className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
-        >
-          <Circle className="h-5 w-5 text-slate-600" />
-          Sign up with Google
-        </button>
-
-        <div className="my-5 flex items-center gap-3 sm:my-6">
-          <div className="h-px flex-1 bg-slate-200" />
-          <span className="shrink-0 text-xs font-bold text-slate-400">OR REGISTER WITH EMAIL</span>
-          <div className="h-px flex-1 bg-slate-200" />
-        </div>
-
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="name" className="text-sm font-semibold text-slate-700">
@@ -151,7 +142,7 @@ function Register() {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder="........"
                   value={password}
@@ -160,10 +151,11 @@ function Register() {
                 />
                 <button
                   type="button"
+                  onClick={() => setShowPassword((isVisible) => !isVisible)}
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
-                  aria-label="Show password"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  <Eye className="h-4 w-4" />
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -177,7 +169,7 @@ function Register() {
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder="........"
                   value={confirmPassword}
@@ -186,10 +178,11 @@ function Register() {
                 />
                 <button
                   type="button"
+                  onClick={() => setShowConfirmPassword((isVisible) => !isVisible)}
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
-                  aria-label="Show confirm password"
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                 >
-                  <Eye className="h-4 w-4" />
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>

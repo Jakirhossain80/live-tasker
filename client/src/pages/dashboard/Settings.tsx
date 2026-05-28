@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
 import { SlidersHorizontal } from 'lucide-react'
+import { toast } from 'sonner'
 import { updateMyProfile } from '../../api/auth'
 import AccountStatusCard from '../../components/settings/AccountStatusCard'
+import PageSkeleton from '../../components/common/PageSkeleton'
 import InterfaceTheme from '../../components/settings/InterfaceTheme'
 import NotificationPreferences from '../../components/settings/NotificationPreferences'
 import ProfileInformation from '../../components/settings/ProfileInformation'
@@ -105,7 +107,10 @@ function Settings() {
 
   async function handleSaveChanges() {
     if (!user) {
-      setSettingsActionMessage('Profile information is unavailable.')
+      const message = 'Profile information is unavailable.'
+
+      setSettingsActionMessage(message)
+      toast.error(message)
       return
     }
 
@@ -120,24 +125,34 @@ function Settings() {
 
       setUser(result.user)
       setSettingsActionMessage('Profile updated successfully.')
+      toast.success('Profile updated.')
     } catch (error) {
       if (isAxiosError<ApiErrorResponse>(error)) {
-        setSettingsActionMessage(
-          error.response?.data?.message || error.message || 'Could not update profile.',
-        )
+        const message = error.response?.data?.message || error.message || 'Could not update profile.'
+
+        setSettingsActionMessage(message)
+        toast.error(message)
         return
       }
 
-      setSettingsActionMessage(
-        error instanceof Error ? error.message : 'Could not update profile.',
-      )
+      const message = error instanceof Error ? error.message : 'Could not update profile.'
+
+      setSettingsActionMessage(message)
+      toast.error(message)
     } finally {
       setIsSavingProfile(false)
     }
   }
 
   function handleDeleteWorkspace() {
-    setSettingsActionMessage('Delete workspace API is not available yet.')
+    const message = 'Delete workspace API is not available yet.'
+
+    setSettingsActionMessage(message)
+    toast.error(message)
+  }
+
+  if (isProfileLoading) {
+    return <PageSkeleton className="max-w-[1440px]" showTable={false} titleWidthClassName="w-44" />
   }
 
   return (

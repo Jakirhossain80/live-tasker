@@ -1,12 +1,12 @@
-import { Eye, LockKeyhole, Mail } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AxiosError } from 'axios'
+import { toast } from 'sonner'
 import { loginUser } from '../../api/auth'
 import AuthCard from '../../components/auth/AuthCard'
 import AuthShell from '../../components/auth/AuthShell'
-import SocialLoginButtons from '../../components/auth/SocialLoginButtons'
 import { useAuthStore } from '../../store/auth.store'
 
 type ApiErrorResponse = {
@@ -35,6 +35,7 @@ function Login() {
   const setAuth = useAuthStore((state) => state.setAuth)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -47,6 +48,7 @@ function Login() {
       const { user, accessToken } = await loginUser({ email, password })
 
       setAuth(user, accessToken)
+      toast.success('Signed in successfully.')
       const pendingInviteCode = getPendingInviteCode()
       const from = (location.state as RedirectLocationState | null)?.from?.pathname
 
@@ -61,6 +63,7 @@ function Login() {
       const message = axiosError.response?.data?.message ?? 'Unable to sign in. Please check your email and password.'
 
       setErrorMessage(message)
+      toast.error(message)
     } finally {
       setIsSubmitting(false)
     }
@@ -69,14 +72,6 @@ function Login() {
   return (
     <AuthShell>
       <AuthCard title="Welcome back">
-        <SocialLoginButtons />
-
-        <div className="my-5 flex items-center gap-3 sm:my-6">
-          <div className="h-px flex-1 bg-slate-200" />
-          <span className="shrink-0 text-xs font-semibold text-slate-400">Or continue with</span>
-          <div className="h-px flex-1 bg-slate-200" />
-        </div>
-
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="text-sm font-semibold text-slate-700">
@@ -114,7 +109,7 @@ function Login() {
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="........"
                 value={password}
@@ -123,10 +118,11 @@ function Login() {
               />
               <button
                 type="button"
+                onClick={() => setShowPassword((isVisible) => !isVisible)}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-white hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
-                aria-label="Show password"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                <Eye className="h-4 w-4" />
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>

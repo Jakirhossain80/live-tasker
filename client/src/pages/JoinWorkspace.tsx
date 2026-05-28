@@ -1,7 +1,9 @@
 import { AxiosError } from 'axios'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { acceptInvite } from '../api/invites'
+import CardSkeleton from '../components/common/CardSkeleton'
 import { useAuthStore } from '../store/auth.store'
 
 const pendingInviteCodeStorageKey = 'livetasker.pendingInviteCode'
@@ -48,6 +50,7 @@ function JoinWorkspace() {
         const workspace = await acceptInvite(code)
 
         clearPendingInviteCode()
+        toast.success(`Joined ${workspace.name} successfully.`)
         navigate('/dashboard/workspaces', {
           replace: true,
           state: {
@@ -62,6 +65,7 @@ function JoinWorkspace() {
             : axiosError.response?.data?.message ?? 'Unable to join this workspace invite.'
 
         setErrorMessage(message)
+        toast.error(message)
       }
     }
 
@@ -75,7 +79,7 @@ function JoinWorkspace() {
   if (!isBootstrapped) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 text-slate-950">
-        <p className="text-sm font-semibold text-slate-500">Loading LiveTasker...</p>
+        <CardSkeleton className="w-full max-w-md" rows={2} />
       </main>
     )
   }
@@ -88,9 +92,11 @@ function JoinWorkspace() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 text-slate-950">
-      <p className="text-sm font-semibold text-slate-500">
-        {errorMessage || 'Joining workspace...'}
-      </p>
+      {errorMessage ? (
+        <p className="text-sm font-semibold text-slate-500">{errorMessage}</p>
+      ) : (
+        <CardSkeleton className="w-full max-w-md" rows={2} />
+      )}
     </main>
   )
 }

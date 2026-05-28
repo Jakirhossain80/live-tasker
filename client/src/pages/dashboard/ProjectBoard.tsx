@@ -16,6 +16,7 @@ import { isAxiosError } from 'axios'
 import { KanbanSquare, Plus } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { getBoardById, getBoards, isValidBoardId, updateBoard, type Board, type BoardColumn } from '../../api/boards'
 import {
   createTask,
@@ -538,10 +539,14 @@ function ProjectBoard() {
     onSuccess: async () => {
       setIsCreateTaskModalOpen(false)
       setCreateTaskErrorMessage(undefined)
+      toast.success('Task created.')
       await queryClient.invalidateQueries({ queryKey: ['tasks', boardId] })
     },
     onError: (mutationError) => {
-      setCreateTaskErrorMessage(getErrorMessage(mutationError))
+      const message = getErrorMessage(mutationError)
+
+      setCreateTaskErrorMessage(message)
+      toast.error(message)
     },
   })
   const updateTaskMutation = useMutation({
@@ -550,20 +555,28 @@ function ProjectBoard() {
       setIsEditTaskModalOpen(false)
       setSelectedTask(null)
       setEditTaskErrorMessage(undefined)
+      toast.success('Task updated.')
       await queryClient.invalidateQueries({ queryKey: ['tasks', boardId] })
     },
     onError: (mutationError) => {
-      setEditTaskErrorMessage(getErrorMessage(mutationError))
+      const message = getErrorMessage(mutationError)
+
+      setEditTaskErrorMessage(message)
+      toast.error(message)
     },
   })
   const deleteTaskMutation = useMutation({
     mutationFn: deleteTask,
     onSuccess: async () => {
       setDeleteTaskErrorMessage(undefined)
+      toast.success('Task deleted.')
       await queryClient.invalidateQueries({ queryKey: ['tasks', boardId] })
     },
     onError: (mutationError) => {
-      setDeleteTaskErrorMessage(getErrorMessage(mutationError))
+      const message = getErrorMessage(mutationError)
+
+      setDeleteTaskErrorMessage(message)
+      toast.error(message)
     },
   })
   const deleteColumnMutation = useMutation({
@@ -586,6 +599,7 @@ function ProjectBoard() {
     onSuccess: async (updatedBoard) => {
       setDeleteColumnErrorMessage(undefined)
       queryClient.setQueryData<Board>(['board', boardId], updatedBoard)
+      toast.success('Column deleted.')
       await queryClient.invalidateQueries({ queryKey: ['board', boardId] })
 
       const updatedWorkspaceId = getBoardWorkspaceId(updatedBoard)
@@ -595,17 +609,24 @@ function ProjectBoard() {
       }
     },
     onError: (mutationError) => {
-      setDeleteColumnErrorMessage(getErrorMessage(mutationError))
+      const message = getErrorMessage(mutationError)
+
+      setDeleteColumnErrorMessage(message)
+      toast.error(message)
     },
   })
   const moveTaskMutation = useMutation({
     mutationFn: ({ taskId, payload }: { taskId: string; payload: MoveTaskPayload }) => moveTask(taskId, payload),
     onSuccess: async () => {
       setMoveTaskErrorMessage(undefined)
+      toast.success('Task moved.')
       await queryClient.invalidateQueries({ queryKey: ['tasks', boardId] })
     },
     onError: (mutationError) => {
-      setMoveTaskErrorMessage(getErrorMessage(mutationError))
+      const message = getErrorMessage(mutationError)
+
+      setMoveTaskErrorMessage(message)
+      toast.error(message)
     },
   })
   const columns = useMemo(() => (board ? mapBoardColumns(board.columns, localTasks) : []), [board, localTasks])
@@ -698,12 +719,18 @@ function ProjectBoard() {
     }
 
     if (board.columns.length <= 1) {
-      setDeleteColumnErrorMessage('You cannot delete the last remaining column.')
+      const message = 'You cannot delete the last remaining column.'
+
+      setDeleteColumnErrorMessage(message)
+      toast.error(message)
       return
     }
 
     if (column.count > 0) {
-      setDeleteColumnErrorMessage('Move all tasks out of this column before deleting it.')
+      const message = 'Move all tasks out of this column before deleting it.'
+
+      setDeleteColumnErrorMessage(message)
+      toast.error(message)
       return
     }
 

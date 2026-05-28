@@ -19,7 +19,7 @@ import ActivityTimeline, { type TimelineGroup } from '../../components/activity/
 import type { TimelineItem } from '../../components/activity/ActivityTimelineItem'
 import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
-import LoadingState from '../../components/common/LoadingState'
+import PageSkeleton from '../../components/common/PageSkeleton'
 import { connectSocket, disconnectSocket, socket } from '../../socket/socket'
 
 const selectedWorkspaceStorageKey = 'livetasker:selectedWorkspaceId'
@@ -424,6 +424,10 @@ function Activity() {
     }
   }, [queryClient, selectedWorkspaceId])
 
+  if (isLoading) {
+    return <PageSkeleton className="max-w-5xl" titleWidthClassName="w-56" />
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -455,9 +459,7 @@ function Activity() {
       <ActivityStats activityLogs={activityLogs} />
 
       <section>
-        {isLoading ? (
-          <LoadingState title="Loading activity" message="Fetching recent workspace activity." />
-        ) : hasError ? (
+        {hasError ? (
           <ErrorState
             title="Could not load activity"
             message={error instanceof Error ? error.message : 'Please try again in a moment.'}

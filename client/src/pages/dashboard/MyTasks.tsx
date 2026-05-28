@@ -6,7 +6,7 @@ import { getTasks, type Task, type TaskPriority } from '../../api/tasks'
 import { getWorkspaces } from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
-import LoadingState from '../../components/common/LoadingState'
+import PageSkeleton from '../../components/common/PageSkeleton'
 import MyTasksStats from '../../components/tasks/MyTasksStats'
 import MyTasksTable from '../../components/tasks/MyTasksTable'
 import type { MyTask } from '../../components/tasks/MyTasksTableRow'
@@ -116,11 +116,7 @@ function MyTasks() {
   const error = workspacesError || boardsError || tasksError
 
   if (isLoading) {
-    return (
-      <div className="mx-auto max-w-7xl">
-        <LoadingState title="Loading tasks" message="Fetching tasks from your current board." />
-      </div>
-    )
+    return <PageSkeleton showTable titleWidthClassName="w-40" />
   }
 
   if (hasError) {

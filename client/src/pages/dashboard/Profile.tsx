@@ -18,8 +18,8 @@ import { getWorkspaceActivity, type ActivityAction, type ActivityLog } from '../
 import { getBoards, isValidBoardId, type Board } from '../../api/boards'
 import { getTasks, type Task, type TaskUser } from '../../api/tasks'
 import { getWorkspaces } from '../../api/workspaces'
+import CardSkeleton from '../../components/common/CardSkeleton'
 import ErrorState from '../../components/common/ErrorState'
-import LoadingState from '../../components/common/LoadingState'
 import ProfileActivityCard from '../../components/profile/ProfileActivityCard'
 import ProfileHeader from '../../components/profile/ProfileHeader'
 import ProfileInfoCard from '../../components/profile/ProfileInfoCard'
@@ -381,7 +381,11 @@ function Profile() {
         <div className="space-y-6">
           <ProfileHeader profile={profile} onEditProfile={handleProfileSettingsNavigation} />
           {areProfileStatsLoading ? (
-            <LoadingState title="Loading profile stats" message="Fetching your workspace, board, and task stats." />
+            <section className="grid gap-4 md:grid-cols-3">
+              <CardSkeleton rows={1} showAvatar={false} />
+              <CardSkeleton rows={1} showAvatar={false} />
+              <CardSkeleton rows={1} showAvatar={false} />
+            </section>
           ) : isProfileStatsError ? (
             <ErrorState
               title="Could not load profile stats"
@@ -408,7 +412,7 @@ function Profile() {
             <ProfileStats stats={profileStats} />
           )}
           {isProfileActivityLoading ? (
-            <LoadingState title="Loading recent activity" message="Fetching your recent workspace activity." />
+            <CardSkeleton rows={4} />
           ) : isProfileActivityError ? (
             <ErrorState
               title="Could not load recent activity"

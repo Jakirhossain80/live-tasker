@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
 import { FolderKanban, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { createBoard, getBoards, isValidBoardId, type CreateBoardPayload } from '../../api/boards'
 import {
   createWorkspace,
@@ -16,7 +17,8 @@ import {
 } from '../../api/workspaces'
 import EmptyState from '../../components/common/EmptyState'
 import ErrorState from '../../components/common/ErrorState'
-import LoadingState from '../../components/common/LoadingState'
+import PageSkeleton from '../../components/common/PageSkeleton'
+import TableSkeleton from '../../components/common/TableSkeleton'
 import CreateBoardModal from '../../components/workspaces/CreateBoardModal'
 import CreateWorkspaceModal from '../../components/workspaces/CreateWorkspaceModal'
 import DataAccessCard from '../../components/workspaces/DataAccessCard'
@@ -221,23 +223,31 @@ function Workspaces() {
       })
       setSelectedWorkspaceId(workspace._id)
       saveWorkspaceId(workspace._id)
+      toast.success(`Workspace "${workspace.name}" created.`)
       await queryClient.invalidateQueries({ queryKey: ['workspaces'] })
     },
     onError: (mutationError) => {
-      setCreateErrorMessage(getErrorMessage(mutationError, 'Could not create workspace.'))
+      const message = getErrorMessage(mutationError, 'Could not create workspace.')
+
+      setCreateErrorMessage(message)
+      toast.error(message)
     },
   })
   const createBoardMutation = useMutation({
     mutationFn: createBoard,
     onSuccess: async (board, variables) => {
       if (!isValidBoardId(board._id)) {
-        setCreateBoardErrorMessage('The board was created, but the server returned an invalid board id.')
+        const message = 'The board was created, but the server returned an invalid board id.'
+
+        setCreateBoardErrorMessage(message)
+        toast.error(message)
         return
       }
 
       setIsCreateBoardModalOpen(false)
       setCreateBoardErrorMessage(undefined)
       setCreateBoardSuccessMessage(`Board "${board.name}" created successfully.`)
+      toast.success(`Board "${board.name}" created.`)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
         queryClient.invalidateQueries({ queryKey: ['boards', variables.workspaceId] }),
@@ -245,8 +255,11 @@ function Workspaces() {
       void navigate(`/dashboard/boards/${board._id}`)
     },
     onError: (mutationError) => {
+      const message = getErrorMessage(mutationError, 'Could not create board.')
+
       setCreateBoardSuccessMessage(undefined)
-      setCreateBoardErrorMessage(getErrorMessage(mutationError, 'Could not create board.'))
+      setCreateBoardErrorMessage(message)
+      toast.error(message)
     },
   })
   const updateWorkspaceMutation = useMutation({
@@ -266,6 +279,7 @@ function Workspaces() {
 
       setUpdateWorkspaceErrorMessage(undefined)
       setUpdateWorkspaceSuccessMessage('Workspace settings updated successfully.')
+      toast.success('Workspace settings updated.')
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['workspace', updatedWorkspace._id] }),
@@ -273,8 +287,11 @@ function Workspaces() {
       ])
     },
     onError: (mutationError) => {
+      const message = getErrorMessage(mutationError, 'Could not update workspace settings.')
+
       setUpdateWorkspaceSuccessMessage(undefined)
-      setUpdateWorkspaceErrorMessage(getErrorMessage(mutationError, 'Could not update workspace settings.'))
+      setUpdateWorkspaceErrorMessage(message)
+      toast.error(message)
     },
   })
   const deleteWorkspaceMutation = useMutation({
@@ -321,10 +338,15 @@ function Workspaces() {
         setSelectedWorkspaceId(undefined)
         clearSavedWorkspaceId()
       }
+
+      toast.success('Workspace deleted.')
     },
     onError: (mutationError) => {
+      const message = getErrorMessage(mutationError, 'Could not delete workspace.')
+
       setUpdateWorkspaceSuccessMessage(undefined)
-      setUpdateWorkspaceErrorMessage(getErrorMessage(mutationError, 'Could not delete workspace.'))
+      setUpdateWorkspaceErrorMessage(message)
+      toast.error(message)
     },
   })
 
@@ -366,7 +388,10 @@ function Workspaces() {
     const workspaceId = getWorkspaceId()
 
     if (!workspaceId) {
-      setCreateBoardErrorMessage('Select a workspace before creating a board.')
+      const message = 'Select a workspace before creating a board.'
+
+      setCreateBoardErrorMessage(message)
+      toast.error(message)
       return
     }
 
@@ -405,7 +430,7 @@ function Workspaces() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-[1440px]">
-        <LoadingState title="Loading workspaces" message="Fetching your workspace and team members." />
+        <PageSkeleton className="max-w-[1440px]" showTable />
         {createWorkspaceModal}
         {createBoardModal}
       </div>
@@ -473,14 +498,20 @@ function Workspaces() {
     const workspaceId = getWorkspaceId()
 
     if (!canUpdateWorkspaceSettings) {
+      const message = permissionMessage ?? 'Only workspace owners or admins can update workspace settings.'
+
       setUpdateWorkspaceSuccessMessage(undefined)
-      setUpdateWorkspaceErrorMessage(permissionMessage)
+      setUpdateWorkspaceErrorMessage(message)
+      toast.error(message)
       return
     }
 
     if (!workspaceId) {
+      const message = 'Select a workspace before updating settings.'
+
       setUpdateWorkspaceSuccessMessage(undefined)
-      setUpdateWorkspaceErrorMessage('Select a workspace before updating settings.')
+      setUpdateWorkspaceErrorMessage(message)
+      toast.error(message)
       return
     }
 
@@ -496,14 +527,20 @@ function Workspaces() {
     const workspaceId = getWorkspaceId()
 
     if (!canDeleteWorkspace) {
+      const message = 'Only workspace owners can delete workspaces.'
+
       setUpdateWorkspaceSuccessMessage(undefined)
-      setUpdateWorkspaceErrorMessage('Only workspace owners can delete workspaces.')
+      setUpdateWorkspaceErrorMessage(message)
+      toast.error(message)
       return
     }
 
     if (!workspaceId) {
+      const message = 'Select a workspace before deleting it.'
+
       setUpdateWorkspaceSuccessMessage(undefined)
-      setUpdateWorkspaceErrorMessage('Select a workspace before deleting it.')
+      setUpdateWorkspaceErrorMessage(message)
+      toast.error(message)
       return
     }
 
@@ -562,7 +599,7 @@ function Workspaces() {
 
         <div className="border-t border-slate-200 px-5 py-4">
           {areBoardsLoading ? (
-            <p className="text-sm font-medium text-slate-500">Loading boards...</p>
+            <TableSkeleton columns={3} rows={2} showHeader={false} className="shadow-none" />
           ) : null}
 
           {isBoardsError ? (

@@ -1,6 +1,7 @@
 import { Check, Edit3, MessageSquare, Paperclip, UserPlus } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityLog } from '../../api/activity'
+import Skeleton, { SkeletonText } from '../common/Skeleton'
 
 type ActivityItem = {
   id: number | string
@@ -99,7 +100,17 @@ function TaskActivityHistory({ activities: liveActivities, isLoading = false, er
 
       <div className="mt-5">
         {isLoading ? (
-          <p className="text-sm font-medium text-slate-500">Loading activity...</p>
+          <div className="space-y-5">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <article key={index} className="relative flex gap-3">
+                {index < 2 ? <span className="absolute left-4 top-9 h-full w-px bg-slate-200" /> : null}
+                <Skeleton className="relative z-10 h-8 w-8 shrink-0" rounded="full" />
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <SkeletonText lines={2} widths={['w-10/12', 'w-5/12']} />
+                </div>
+              </article>
+            ))}
+          </div>
         ) : errorMessage ? (
           <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
             {errorMessage}

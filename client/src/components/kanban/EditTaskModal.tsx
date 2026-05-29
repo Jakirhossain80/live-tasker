@@ -1,5 +1,8 @@
 import { X } from 'lucide-react'
+import { isAxiosError } from 'axios'
 import { useEffect, useState, type FormEvent } from 'react'
+import { toast } from 'sonner'
+import { generateTaskDescription } from '../../api/ai'
 import type { Task, TaskPriority, UpdateTaskPayload } from '../../api/tasks'
 
 type EditTaskModalProps = {
@@ -31,6 +34,7 @@ function EditTaskModal({ task, isOpen, isSubmitting, errorMessage, onClose, onSu
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<TaskPriority>('medium')
   const [dueDate, setDueDate] = useState('')
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
 
   useEffect(() => {
     if (isOpen && task) {
@@ -56,6 +60,31 @@ function EditTaskModal({ task, isOpen, isSubmitting, errorMessage, onClose, onSu
       priority,
       dueDate: dueDate || null,
     })
+  }
+
+  async function handleGenerateDescription() {
+    const trimmedTitle = title.trim()
+
+    if (!trimmedTitle) {
+      toast.error('Please enter a task title first.')
+      return
+    }
+
+    try {
+      setIsGeneratingDescription(true)
+      const generatedDescription = await generateTaskDescription(trimmedTitle)
+
+      setDescription(generatedDescription)
+      toast.success('AI description generated.')
+    } catch (error) {
+      const message = isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message || error.message
+        : 'Could not generate AI description.'
+
+      toast.error(message)
+    } finally {
+      setIsGeneratingDescription(false)
+    }
   }
 
   return (
@@ -93,11 +122,21 @@ function EditTaskModal({ task, isOpen, isSubmitting, errorMessage, onClose, onSu
           </label>
 
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">Description</span>
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold text-slate-700">Description</span>
+              <button
+                type="button"
+                onClick={handleGenerateDescription}
+                disabled={isSubmitting || isGeneratingDescription}
+                className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isGeneratingDescription ? 'Generating...' : 'Generate AI Description'}
+              </button>
+            </span>
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isGeneratingDescription}
               rows={3}
               maxLength={5000}
               className="mt-2 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium leading-6 text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-70"

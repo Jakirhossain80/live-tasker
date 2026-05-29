@@ -6,8 +6,6 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragOverEvent,
-  type DragStartEvent,
   type UniqueIdentifier,
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
@@ -809,29 +807,11 @@ function ProjectBoard() {
     )
   }
 
-  function handleDragStart(event: DragStartEvent) {
-    console.log('Kanban drag start', {
-      activeTaskId: String(event.active.id),
-    })
-  }
-
-  function handleDragOver(event: DragOverEvent) {
-    console.log('Kanban drag over', {
-      activeTaskId: String(event.active.id),
-      targetColumnId: getColumnIdFromDragTarget(columns, event.over?.id),
-    })
-  }
-
   function handleDragEnd(event: DragEndEvent) {
     const activeTaskId = String(event.active.id)
     const targetColumnId = getColumnIdFromDragTarget(columns, event.over?.id)
     const targetTaskId = getTaskIdFromDragTarget(columns, event.over?.id)
     const currentBoardId = boardId
-
-    console.log('Kanban drag end', {
-      activeTaskId,
-      targetColumnId,
-    })
 
     if (!currentBoardId || !targetColumnId) {
       return
@@ -914,8 +894,6 @@ function ProjectBoard() {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           <div className="flex h-full min-w-full flex-nowrap gap-6">

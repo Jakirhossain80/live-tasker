@@ -1,0 +1,276 @@
+"use strict";
+const mongoose = require("mongoose");
+const Board = require("../models/Board");
+const Task = require("../models/Task");
+const Workspace = require("../models/Workspace");
+const activityLogService = require("./activityLogService");
+const socketEmitter = require("../sockets/socketEmitter");
+const taskPriorities = ["low", "medium", "high", "urgent"];
+const createHttpError = (message, statusCode, errorCode) => {
+    const error = new Error(message);
+    Object.assign(error, { statusCode, errorCode });
+    return error;
+};
+const validateObjectId = (id, fieldName, errorCode = "INVALID_OBJECT_ID") => {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw createHttpError(`Invalid ${fieldName}`, 400, errorCode);
+    }
+};
+const getMember = (workspace, userId) => {
+    return workspace.members.find((member) => String(member.user) === userId);
+};
+const ensureWorkspaceMember = (workspace, userId) => {
+    const member = getMember(workspace, userId);
+    if (!member) {
+        // The workspace exists, but this user is not listed in its members array.
+        throw createHttpError("User is not a member of this workspace", 403, "WORKSPACE_MEMBERSHIP_REQUIRED");
+    }
+    return member;
+};
+const getWorkspaceForMember = async (workspaceId, userId) => {
+    validateObjectId(workspaceId, "workspace id");
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+        throw createHttpError("Workspace not found", 404, "WORKSPACE_NOT_FOUND");
+    }
+    ensureWorkspaceMember(workspace, userId);
+    return workspace;
+};
+const populateTask = (query) => {
+    return query
+        .populate("workspace", "name description owner isArchived")
+        .populate("board", "name description columns isArchived")
+        .populate("assignees", "name email avatar")
+        .populate("createdBy", "name email avatar");
+};
+const ensureBoardStatus = (board, statusId) => {
+    // status comes from the request as columnId, so name it that way for new API users.
+    if (!mongoose.Types.ObjectId.isValid(statusId)) {
+        throw createHttpError("Invalid columnId. Please provide a valid board column _id.", 400, "INVALID_COLUMN_ID");
+    }
+    const statusExists = board.columns.some((column) => String(column._id) === statusId);
+    if (!statusExists) {
+        throw createHttpError("Invalid columnId. Please provide a valid board column _id.", 400, "INVALID_COLUMN_ID");
+    }
+};
+const getBoardForMember = async (boardId, userId) => {
+    // Treat a malformed boardId the same as a missing board to avoid confusing beginners.
+    if (!mongoose.Types.ObjectId.isValid(boardId)) {
+        throw createHttpError("Board not found", 404, "BOARD_NOT_FOUND");
+    }
+    const board = await Board.findById(boardId);
+    if (!board) {
+        throw createHttpError("Board not found", 404, "BOARD_NOT_FOUND");
+    }
+    await getWorkspaceForMember(String(board.workspace), userId);
+    return board;
+};
+const getTaskForMember = async (taskId, userId) => {
+    validateObjectId(taskId, "task id");
+    const task = await Task.findById(taskId);
+    if (!task) {
+        throw createHttpError("Task not found", 404, "TASK_NOT_FOUND");
+    }
+    await getWorkspaceForMember(String(task.workspace), userId);
+    return task;
+};
+const ensureWorkspaceAssignees = async (workspaceId, assignees) => {
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+        throw createHttpError("Workspace not found", 404, "WORKSPACE_NOT_FOUND");
+    }
+    for (const assignee of assignees) {
+        validateObjectId(assignee, "assignee id", "INVALID_ASSIGNEE_ID");
+        if (!getMember(workspace, assignee)) {
+            // Tasks can only be assigned to users who already belong to the board workspace.
+            throw createHttpError("Assignee is not a member of this workspace", 400, "ASSIGNEE_NOT_WORKSPACE_MEMBER");
+        }
+    }
+};
+const normalizeLabels = (labels) => {
+    return labels.map((label) => label.trim()).filter(Boolean);
+};
+const getDefinedFields = (fields) => {
+    return Object.entries(fields)
+        .filter(([, value]) => value !== undefined)
+        .map(([field]) => field);
+};
+const createTask = async ({ boardId, userId, status, title, description, assignees, priority, dueDate, labels, order, }) => {
+    const board = await getBoardForMember(boardId, userId);
+    ensureBoardStatus(board, status);
+    if (assignees !== undefined) {
+        await ensureWorkspaceAssignees(String(board.workspace), assignees);
+    }
+    const taskData = {
+        workspace: board.workspace,
+        board: board._id,
+        status,
+        title: title.trim(),
+        createdBy: userId,
+    };
+    if (description !== undefined) {
+        taskData.description = description.trim();
+    }
+    if (assignees !== undefined) {
+        taskData.assignees = assignees;
+    }
+    if (priority !== undefined) {
+        taskData.priority = priority;
+    }
+    if (dueDate !== undefined && dueDate !== null) {
+        taskData.dueDate = new Date(dueDate);
+    }
+    if (labels !== undefined) {
+        taskData.labels = normalizeLabels(labels);
+    }
+    if (order !== undefined) {
+        taskData.order = order;
+    }
+    const task = await Task.create(taskData);
+    await activityLogService.logTaskCreated({
+        workspace: task.workspace,
+        board: task.board,
+        task: task._id,
+        actor: userId,
+        taskTitle: task.title,
+        metadata: {
+            status,
+            priority: task.priority,
+        },
+    });
+    const populatedTask = await populateTask(Task.findById(task._id));
+    socketEmitter.emitTaskCreated(populatedTask);
+    return populatedTask;
+};
+const getTasksByBoard = async (boardId, userId) => {
+    await getBoardForMember(boardId, userId);
+    return populateTask(Task.find({
+        board: boardId,
+    }).sort({ status: 1, order: 1, createdAt: 1 }));
+};
+const getTaskById = async (taskId, userId) => {
+    await getTaskForMember(taskId, userId);
+    return populateTask(Task.findById(taskId));
+};
+const updateTask = async ({ taskId, userId, status, title, description, assignees, priority, dueDate, labels, order, }) => {
+    const task = await getTaskForMember(taskId, userId);
+    const updatedFields = getDefinedFields({
+        status,
+        title,
+        description,
+        assignees,
+        priority,
+        dueDate,
+        labels,
+        order,
+    });
+    const previousStatus = String(task.status);
+    const previousOrder = task.order;
+    if (status !== undefined) {
+        const board = await Board.findById(task.board);
+        if (!board) {
+            throw createHttpError("Board not found", 404, "BOARD_NOT_FOUND");
+        }
+        ensureBoardStatus(board, status);
+        task.status = new mongoose.Types.ObjectId(status);
+    }
+    if (title !== undefined) {
+        task.title = title.trim();
+    }
+    if (description !== undefined) {
+        task.description = description.trim();
+    }
+    if (assignees !== undefined) {
+        await ensureWorkspaceAssignees(String(task.workspace), assignees);
+        task.assignees = assignees.map((assignee) => new mongoose.Types.ObjectId(assignee));
+    }
+    if (priority !== undefined) {
+        task.priority = priority;
+    }
+    if (dueDate !== undefined) {
+        task.set("dueDate", dueDate === null ? undefined : new Date(dueDate));
+    }
+    if (labels !== undefined) {
+        task.labels = normalizeLabels(labels);
+    }
+    if (order !== undefined) {
+        task.order = order;
+    }
+    await task.save();
+    await activityLogService.logTaskUpdated({
+        workspace: task.workspace,
+        board: task.board,
+        task: task._id,
+        actor: userId,
+        taskTitle: task.title,
+        metadata: {
+            updatedFields,
+            previousStatus,
+            currentStatus: String(task.status),
+            previousOrder,
+            currentOrder: task.order,
+        },
+    });
+    const populatedTask = await populateTask(Task.findById(task._id));
+    socketEmitter.emitTaskUpdated(populatedTask);
+    return populatedTask;
+};
+const moveTask = async ({ taskId, userId, status, order }) => {
+    const task = await getTaskForMember(taskId, userId);
+    const previousStatus = String(task.status);
+    const previousOrder = task.order;
+    const board = await Board.findById(task.board);
+    if (!board) {
+        throw createHttpError("Board not found", 404, "BOARD_NOT_FOUND");
+    }
+    ensureBoardStatus(board, status);
+    task.status = new mongoose.Types.ObjectId(status);
+    task.order = order;
+    await task.save();
+    await activityLogService.logTaskMoved({
+        workspace: task.workspace,
+        board: task.board,
+        task: task._id,
+        actor: userId,
+        taskTitle: task.title,
+        metadata: {
+            previousStatus,
+            currentStatus: String(task.status),
+            previousOrder,
+            currentOrder: task.order,
+        },
+    });
+    const populatedTask = await populateTask(Task.findById(task._id));
+    socketEmitter.emitTaskMoved(populatedTask);
+    return populatedTask;
+};
+const deleteTask = async (taskId, userId) => {
+    const task = await getTaskForMember(taskId, userId);
+    const workspace = await Workspace.findById(task.workspace);
+    if (!workspace) {
+        throw createHttpError("Workspace not found", 404, "WORKSPACE_NOT_FOUND");
+    }
+    const member = ensureWorkspaceMember(workspace, userId);
+    const canDelete = member.role === "owner" ||
+        member.role === "admin" ||
+        String(task.createdBy) === userId;
+    if (!canDelete) {
+        throw createHttpError("Only workspace owners, admins, or task creators can delete tasks", 403, "TASK_DELETE_FORBIDDEN");
+    }
+    await Task.findByIdAndDelete(task._id);
+    socketEmitter.emitTaskDeleted({
+        taskId: String(task._id),
+        workspaceId: String(task.workspace),
+        boardId: String(task.board),
+    });
+};
+module.exports = {
+    taskPriorities,
+    createTask,
+    getTasksByBoard,
+    getTaskById,
+    updateTask,
+    moveTask,
+    deleteTask,
+};
+//# sourceMappingURL=taskService.js.map

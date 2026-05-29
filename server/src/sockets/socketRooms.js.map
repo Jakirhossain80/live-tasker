@@ -1,0 +1,1 @@
+{"version":3,"file":"socketRooms.js","sourceRoot":"","sources":["socketRooms.ts"],"names":[],"mappings":";AAAA,MAAM,gBAAgB,GAAG,CAAC,WAAmB,EAAE,EAAE;IAC/C,OAAO,aAAa,WAAW,EAAE,CAAC;AACpC,CAAC,CAAC;AAEF,MAAM,YAAY,GAAG,CAAC,OAAe,EAAE,EAAE;IACvC,OAAO,SAAS,OAAO,EAAE,CAAC;AAC5B,CAAC,CAAC;AAEF,iBAAS;IACP,gBAAgB;IAChB,YAAY;CACb,CAAC"}

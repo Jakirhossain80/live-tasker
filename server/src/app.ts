@@ -1,6 +1,7 @@
 import express = require("express");
 import cors = require("cors");
 import cookieParser = require("cookie-parser");
+import aiRoutes = require("./routes/aiRoutes");
 import authRoutes = require("./routes/authRoutes");
 import activityRoutes = require("./routes/activityRoutes");
 import boardRoutes = require("./routes/boardRoutes");
@@ -28,6 +29,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/ai", aiRoutes);
 app.use("/api/workspaces", workspaceRoutes);
 app.use("/api/workspaces", activityRoutes);
 app.use("/api", boardRoutes);

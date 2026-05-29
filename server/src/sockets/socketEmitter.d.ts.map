@@ -1,0 +1,1 @@
+{"version":3,"file":"socketEmitter.d.ts","sourceRoot":"","sources":["socketEmitter.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,WAAW,CAAC;;oCAKD,MAAM;;4BA2Bd,GAAG;4BASH,GAAG;0BASL,GAAG;+BASE;QAChC,MAAM,EAAE,MAAM,CAAC;QACf,WAAW,EAAE,MAAM,CAAC;QACpB,OAAO,EAAE,MAAM,CAAC;KACjB;gCASkC,GAAG;;AAWtC,kBAQE"}

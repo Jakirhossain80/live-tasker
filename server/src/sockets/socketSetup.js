@@ -1,0 +1,241 @@
+"use strict";
+const mongoose = require("mongoose");
+const socketIo = require("socket.io");
+const authService = require("../services/authService");
+const Board = require("../models/Board");
+const User = require("../models/User");
+const Workspace = require("../models/Workspace");
+const socketEmitter = require("./socketEmitter");
+const socketRooms = require("./socketRooms");
+const workspacePresence = new Map();
+const getTokenFromHandshake = (socket) => {
+    const authToken = socket.handshake.auth?.token;
+    if (typeof authToken === "string" && authToken.trim().length > 0) {
+        const token = authToken.trim();
+        return token.startsWith("Bearer ")
+            ? token.slice("Bearer ".length).trim()
+            : token;
+    }
+    const authorizationHeader = socket.handshake.headers.authorization;
+    if (typeof authorizationHeader === "string" &&
+        authorizationHeader.startsWith("Bearer ")) {
+        return authorizationHeader.slice("Bearer ".length).trim();
+    }
+    return null;
+};
+const isWorkspaceMember = (workspace, userId) => {
+    return workspace.members.some((member) => String(member.user) === userId);
+};
+const getOnlineUsers = async (workspaceId) => {
+    const workspaceUsers = workspacePresence.get(workspaceId);
+    const userIds = workspaceUsers ? Array.from(workspaceUsers.keys()) : [];
+    if (userIds.length === 0) {
+        return [];
+    }
+    const users = await User.find({ _id: { $in: userIds } }).select("name email avatar");
+    const userById = new Map(users.map((user) => [String(user._id), user]));
+    return userIds
+        .map((userId) => {
+        const user = userById.get(userId);
+        if (!user) {
+            return null;
+        }
+        return {
+            id: userId,
+            name: user.name,
+            email: user.email,
+            avatar: user.avatar,
+        };
+    })
+        .filter(Boolean);
+};
+const emitPresenceUpdated = async (io, workspaceId) => {
+    const users = await getOnlineUsers(workspaceId);
+    const payload = { workspaceId, users };
+    io.to(socketRooms.getWorkspaceRoom(workspaceId)).emit("onlineUsers", payload);
+    io.to(socketRooms.getWorkspaceRoom(workspaceId)).emit("presenceUpdated", payload);
+};
+const trackWorkspacePresence = async (io, socket, workspaceId) => {
+    let workspaceUsers = workspacePresence.get(workspaceId);
+    if (!workspaceUsers) {
+        workspaceUsers = new Map();
+        workspacePresence.set(workspaceId, workspaceUsers);
+    }
+    const userId = socket.data.user.id;
+    let userSockets = workspaceUsers.get(userId);
+    const wasOffline = !userSockets || userSockets.size === 0;
+    if (!userSockets) {
+        userSockets = new Set();
+        workspaceUsers.set(userId, userSockets);
+    }
+    userSockets.add(socket.id);
+    socket.data.workspaceIds ??= new Set();
+    socket.data.workspaceIds.add(workspaceId);
+    if (wasOffline) {
+        const users = await getOnlineUsers(workspaceId);
+        const user = users.find((onlineUser) => onlineUser.id === userId);
+        if (user) {
+            io.to(socketRooms.getWorkspaceRoom(workspaceId)).emit("userOnline", {
+                workspaceId,
+                user,
+            });
+        }
+    }
+    await emitPresenceUpdated(io, workspaceId);
+};
+const untrackWorkspacePresence = async (io, socket, workspaceId) => {
+    const workspaceUsers = workspacePresence.get(workspaceId);
+    if (!workspaceUsers) {
+        return;
+    }
+    const userId = socket.data.user.id;
+    const userSockets = workspaceUsers.get(userId);
+    userSockets?.delete(socket.id);
+    if (userSockets && userSockets.size > 0) {
+        await emitPresenceUpdated(io, workspaceId);
+        return;
+    }
+    workspaceUsers.delete(userId);
+    if (workspaceUsers.size === 0) {
+        workspacePresence.delete(workspaceId);
+    }
+    io.to(socketRooms.getWorkspaceRoom(workspaceId)).emit("userOffline", {
+        workspaceId,
+        userId,
+    });
+    await emitPresenceUpdated(io, workspaceId);
+};
+const getIdFromPayload = (payload, key) => {
+    if (typeof payload === "string") {
+        return payload;
+    }
+    if (typeof payload === "object" && payload !== null) {
+        const value = payload[key];
+        if (typeof value === "string") {
+            return value;
+        }
+    }
+    return null;
+};
+const joinWorkspace = async (io, socket, payload, callback) => {
+    const workspaceId = getIdFromPayload(payload, "workspaceId");
+    if (!workspaceId || !mongoose.Types.ObjectId.isValid(workspaceId)) {
+        callback?.({ success: false, message: "Valid workspaceId is required" });
+        return;
+    }
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace || !isWorkspaceMember(workspace, socket.data.user.id)) {
+        callback?.({ success: false, message: "Workspace access denied" });
+        return;
+    }
+    await socket.join(socketRooms.getWorkspaceRoom(workspaceId));
+    await trackWorkspacePresence(io, socket, workspaceId);
+    callback?.({ success: true, room: socketRooms.getWorkspaceRoom(workspaceId) });
+};
+const joinBoard = async (io, socket, payload, callback) => {
+    const boardId = getIdFromPayload(payload, "boardId");
+    if (!boardId || !mongoose.Types.ObjectId.isValid(boardId)) {
+        callback?.({ success: false, message: "Valid boardId is required" });
+        return;
+    }
+    const board = await Board.findById(boardId);
+    if (!board) {
+        callback?.({ success: false, message: "Board access denied" });
+        return;
+    }
+    const workspace = await Workspace.findById(board.workspace);
+    if (!workspace || !isWorkspaceMember(workspace, socket.data.user.id)) {
+        callback?.({ success: false, message: "Board access denied" });
+        return;
+    }
+    await socket.join(socketRooms.getBoardRoom(boardId));
+    await socket.join(socketRooms.getWorkspaceRoom(String(board.workspace)));
+    await trackWorkspacePresence(io, socket, String(board.workspace));
+    callback?.({ success: true, room: socketRooms.getBoardRoom(boardId) });
+};
+const leaveWorkspace = async (io, socket, payload, callback) => {
+    const workspaceId = getIdFromPayload(payload, "workspaceId");
+    if (!workspaceId || !mongoose.Types.ObjectId.isValid(workspaceId)) {
+        callback?.({ success: false, message: "Valid workspaceId is required" });
+        return;
+    }
+    await untrackWorkspacePresence(io, socket, workspaceId);
+    await socket.leave(socketRooms.getWorkspaceRoom(workspaceId));
+    socket.data.workspaceIds?.delete(workspaceId);
+    callback?.({ success: true, room: socketRooms.getWorkspaceRoom(workspaceId) });
+};
+const leaveBoard = async (io, socket, payload, callback) => {
+    const boardId = getIdFromPayload(payload, "boardId");
+    if (!boardId || !mongoose.Types.ObjectId.isValid(boardId)) {
+        callback?.({ success: false, message: "Valid boardId is required" });
+        return;
+    }
+    const board = await Board.findById(boardId);
+    if (board) {
+        const workspaceId = String(board.workspace);
+        await untrackWorkspacePresence(io, socket, workspaceId);
+        await socket.leave(socketRooms.getWorkspaceRoom(workspaceId));
+        socket.data.workspaceIds?.delete(workspaceId);
+    }
+    await socket.leave(socketRooms.getBoardRoom(boardId));
+    callback?.({ success: true, room: socketRooms.getBoardRoom(boardId) });
+};
+const initializeSocket = (server) => {
+    const io = new socketIo.Server(server, {
+        cors: {
+            origin: process.env.CLIENT_URL || true,
+            credentials: true,
+        },
+    });
+    io.use((socket, next) => {
+        const token = getTokenFromHandshake(socket);
+        if (!token) {
+            next(new Error("Access token is required"));
+            return;
+        }
+        try {
+            const payload = authService.verifyAccessToken(token);
+            socket.data.user = {
+                id: payload.userId,
+            };
+            next();
+        }
+        catch {
+            next(new Error("Invalid or expired access token"));
+        }
+    });
+    io.on("connection", (socket) => {
+        socket.on("joinWorkspace", (workspaceId, callback) => {
+            joinWorkspace(io, socket, workspaceId, callback).catch(() => {
+                callback?.({ success: false, message: "Could not join workspace" });
+            });
+        });
+        socket.on("joinBoard", (boardId, callback) => {
+            joinBoard(io, socket, boardId, callback).catch(() => {
+                callback?.({ success: false, message: "Could not join board" });
+            });
+        });
+        socket.on("leaveWorkspace", (workspaceId, callback) => {
+            leaveWorkspace(io, socket, workspaceId, callback).catch(() => {
+                callback?.({ success: false, message: "Could not leave workspace" });
+            });
+        });
+        socket.on("leaveBoard", (boardId, callback) => {
+            leaveBoard(io, socket, boardId, callback).catch(() => {
+                callback?.({ success: false, message: "Could not leave board" });
+            });
+        });
+        socket.on("disconnect", () => {
+            const workspaceIds = Array.from(socket.data.workspaceIds ?? []);
+            workspaceIds.forEach((workspaceId) => {
+                untrackWorkspacePresence(io, socket, workspaceId).catch(() => undefined);
+            });
+        });
+    });
+    socketEmitter.setSocketServer(io);
+    return io;
+};
+module.exports = {
+    initializeSocket,
+};
+//# sourceMappingURL=socketSetup.js.map

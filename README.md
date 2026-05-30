@@ -479,7 +479,7 @@ MERN Stack Developer
 
 * GitHub: https://github.com/Jakirhossain80
 * LinkedIn: https://www.linkedin.com/in/jakirhossain80
-* Portfolio: https://jakir-dev.netlify.app
+* Portfolio: https://jakirdev-portfolio-bd.netlify.app
 
 ---
 

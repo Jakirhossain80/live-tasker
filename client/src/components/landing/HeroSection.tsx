@@ -1,5 +1,5 @@
-import { ArrowRight, BarChart3, CheckCircle2, PlayCircle } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { ArrowRight, BarChart3, CheckCircle2, PlayCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 
 function HeroSection() {
   return (
@@ -15,13 +15,14 @@ function HeroSection() {
           </div>
 
           <h1 className="mt-6 max-w-4xl text-4xl font-black leading-tight tracking-normal text-slate-950 sm:text-5xl lg:text-6xl">
-            Manage Team Tasks in{' '}
+            Manage Team Tasks in{" "}
             <span className="italic text-indigo-600">Real Time</span>
           </h1>
 
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            LiveTasker keeps projects, assignments, discussions, and activity in sync with WebSocket-driven updates
-            your team can see the moment work changes.
+            LiveTasker keeps projects, assignments, discussions, and activity in
+            sync with WebSocket-driven updates your team can see the moment work
+            changes.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -33,7 +34,9 @@ function HeroSection() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <a
-              href="#how-it-works"
+              href="https://www.loom.com/share/0b4e1c6ec4f647df8f497cc38ee9a139"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-100 bg-white/85 px-5 py-3 text-sm font-bold text-slate-800 shadow-sm hover:bg-white"
             >
               <PlayCircle className="h-4 w-4" />
@@ -63,8 +66,12 @@ function HeroSection() {
             <div className="rounded-2xl border border-slate-200 bg-[#faf8ff] p-4">
               <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <div>
-                  <p className="text-sm font-bold text-slate-950">Live Project Board</p>
-                  <p className="mt-1 text-xs text-slate-500">WebSocket updates active</p>
+                  <p className="text-sm font-bold text-slate-950">
+                    Live Project Board
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    WebSocket updates active
+                  </p>
                 </div>
                 <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -73,10 +80,15 @@ function HeroSection() {
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                {['Backlog', 'In Progress', 'Done'].map((column, index) => (
-                  <div key={column} className="rounded-xl border border-indigo-100 bg-white p-3 shadow-sm">
+                {["Backlog", "In Progress", "Done"].map((column, index) => (
+                  <div
+                    key={column}
+                    className="rounded-xl border border-indigo-100 bg-white p-3 shadow-sm"
+                  >
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-slate-700">{column}</p>
+                      <p className="text-xs font-bold text-slate-700">
+                        {column}
+                      </p>
                       <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-600">
                         {index + 3}
                       </span>
@@ -102,7 +114,9 @@ function HeroSection() {
                     <BarChart3 className="h-5 w-5" />
                   </span>
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-slate-950">Team activity synced</p>
+                    <p className="text-sm font-bold text-slate-950">
+                      Team activity synced
+                    </p>
                     <div className="mt-2 h-2 rounded-full bg-slate-100">
                       <div className="h-2 w-3/4 rounded-full bg-indigo-600" />
                     </div>
@@ -114,7 +128,7 @@ function HeroSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
 
-export default HeroSection
+export default HeroSection;

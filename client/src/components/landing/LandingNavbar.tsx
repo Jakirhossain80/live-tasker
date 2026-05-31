@@ -1,4 +1,5 @@
 import { CheckSquare, Menu } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 const navLinks = [
@@ -8,6 +9,16 @@ const navLinks = [
 ]
 
 function LandingNavbar() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  function toggleMobileMenu() {
+    setIsMobileMenuOpen((currentValue) => !currentValue)
+  }
+
+  function closeMobileMenu() {
+    setIsMobileMenuOpen(false)
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -43,12 +54,48 @@ function LandingNavbar() {
 
         <button
           type="button"
+          onClick={toggleMobileMenu}
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-100 bg-white text-slate-700 shadow-sm md:hidden"
           aria-label="Open navigation"
+          aria-expanded={isMobileMenuOpen}
         >
           <Menu className="h-5 w-5" />
         </button>
       </nav>
+
+      {isMobileMenuOpen ? (
+        <div className="relative z-50 border-t border-slate-200 bg-white px-4 py-4 shadow-sm md:hidden">
+          <div className="flex flex-col gap-3">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={closeMobileMenu}
+                className="text-sm font-medium text-slate-600 hover:text-slate-950"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <Link
+              to="/login"
+              onClick={closeMobileMenu}
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+            >
+              Log in
+            </Link>
+            <Link
+              to="/register"
+              onClick={closeMobileMenu}
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700"
+            >
+              Get started
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </header>
   )
 }

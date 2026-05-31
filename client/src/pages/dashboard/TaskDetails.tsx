@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { getWorkspaceActivity, type ActivityLog } from '../../api/activity'
 import { createComment, getComments, type Comment } from '../../api/comments'
 import { getTaskById, type Task } from '../../api/tasks'
 import CardSkeleton from '../../components/common/CardSkeleton'
+import ErrorState from '../../components/common/ErrorState'
 import TaskActionButtons from '../../components/task-details/TaskActionButtons'
 import TaskActivityHistory from '../../components/task-details/TaskActivityHistory'
 import TaskDescription from '../../components/task-details/TaskDescription'
@@ -56,14 +57,24 @@ function upsertComment(comments: Comment[], nextComment: Comment) {
 
 function TaskDetails() {
   const { taskId } = useParams()
+  const location = useLocation()
+  const routeState = location.state as { boardId?: string } | null
+  const expectedBoardId = routeState?.boardId
   const hasValidTaskId = isValidTaskId(taskId)
   const queryClient = useQueryClient()
   const { socket, isConnected } = useSocket()
-  const { data: task, isLoading: isTaskLoading } = useQuery({
+  const {
+    data: task,
+    isLoading: isTaskLoading,
+    isError: isTaskError,
+    error: taskError,
+  } = useQuery({
     queryKey: ['task', taskId],
     queryFn: () => getTaskById(taskId as string),
     enabled: hasValidTaskId,
   })
+  const boardId = task ? getTaskBoardId(task) : undefined
+  const isWrongBoardTask = Boolean(expectedBoardId && boardId && expectedBoardId !== boardId)
   const {
     data: comments,
     isLoading: areCommentsLoading,
@@ -72,9 +83,8 @@ function TaskDetails() {
   } = useQuery({
     queryKey: ['comments', taskId],
     queryFn: () => getComments(taskId as string),
-    enabled: hasValidTaskId,
+    enabled: hasValidTaskId && Boolean(task) && !isWrongBoardTask,
   })
-  const boardId = task ? getTaskBoardId(task) : undefined
   const workspaceId = task ? getTaskWorkspaceId(task) : undefined
   const {
     data: activity,
@@ -84,7 +94,7 @@ function TaskDetails() {
   } = useQuery({
     queryKey: ['workspace-activity', workspaceId],
     queryFn: () => getWorkspaceActivity(workspaceId as string),
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId) && !isWrongBoardTask,
   })
   const taskActivity =
     hasValidTaskId && taskId ? (activity ?? []).filter((activityLog) => getActivityTaskId(activityLog) === taskId) : []
@@ -166,13 +176,30 @@ function TaskDetails() {
     )
   }
 
+  if (!hasValidTaskId || isTaskError || !task || isWrongBoardTask) {
+    return (
+      <div className="mx-auto max-w-[1440px]">
+        <ErrorState
+          title="Could not load task"
+          message={
+            isWrongBoardTask
+              ? 'This task does not belong to the board it was opened from.'
+              : taskError instanceof Error
+                ? taskError.message
+                : 'Please open the task again from its board.'
+          }
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-[1440px] space-y-6">
-      <TaskDetailsHeader />
+      <TaskDetailsHeader task={task} />
 
       <div className="grid gap-6 lg:grid-cols-12">
         <div className="space-y-6 lg:col-span-8">
-          <TaskDescription />
+          <TaskDescription description={task.description} labels={task.labels} />
           <TaskDiscussion
             comments={hasValidTaskId ? comments ?? [] : undefined}
             isLoading={areCommentsLoading}
@@ -193,7 +220,7 @@ function TaskDetails() {
         </div>
 
         <aside className="space-y-6 lg:col-span-4">
-          <TaskProperties assignees={task?.assignees} />
+          <TaskProperties assignees={task.assignees} dueDate={task.dueDate} priority={task.priority} />
           <TaskActionButtons />
           <TaskActivityHistory
             activities={workspaceId ? taskActivity : undefined}

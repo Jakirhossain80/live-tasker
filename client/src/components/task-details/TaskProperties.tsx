@@ -1,8 +1,17 @@
 import { ChevronDown, Plus } from 'lucide-react'
-import type { TaskUser } from '../../api/tasks'
+import type { TaskPriority, TaskUser } from '../../api/tasks'
 
 type TaskPropertiesProps = {
   assignees?: Array<TaskUser | string>
+  dueDate?: string
+  priority: TaskPriority
+}
+
+const priorityLabels: Record<TaskPriority, string> = {
+  low: 'Low Priority',
+  medium: 'Medium Priority',
+  high: 'High Priority',
+  urgent: 'Urgent Priority',
 }
 
 function getAssigneeName(assignee: TaskUser | string) {
@@ -22,8 +31,25 @@ function getAssigneeInitials(assignee: TaskUser | string) {
     .toUpperCase()
 }
 
-function TaskProperties({ assignees }: TaskPropertiesProps) {
+function formatDueDate(dueDate?: string) {
+  if (!dueDate) {
+    return 'No due date'
+  }
+
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(dueDate))
+}
+
+function isOverdue(dueDate?: string) {
+  return Boolean(dueDate && new Date(dueDate).getTime() < Date.now())
+}
+
+function TaskProperties({ assignees, dueDate, priority }: TaskPropertiesProps) {
   const primaryAssignee = assignees?.[0]
+  const overdue = isOverdue(dueDate)
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -58,8 +84,10 @@ function TaskProperties({ assignees }: TaskPropertiesProps) {
           <h4 className="text-sm font-semibold text-slate-950">Due Date</h4>
           <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-rose-950">Oct 24, 2023</span>
-              <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-700">Overdue</span>
+              <span className="text-sm font-semibold text-rose-950">{formatDueDate(dueDate)}</span>
+              <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-700">
+                {overdue ? 'Overdue' : 'Scheduled'}
+              </span>
             </div>
           </div>
         </div>
@@ -70,7 +98,7 @@ function TaskProperties({ assignees }: TaskPropertiesProps) {
             type="button"
             className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-left text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
           >
-            High Priority
+            {priorityLabels[priority]}
             <ChevronDown className="h-4 w-4 shrink-0" />
           </button>
         </div>

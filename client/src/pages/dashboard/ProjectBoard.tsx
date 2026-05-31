@@ -671,7 +671,7 @@ function ProjectBoard() {
   }
 
   function handleTaskClick(taskId: string) {
-    navigate(`/dashboard/tasks/${taskId}`)
+    navigate(`/dashboard/tasks/${taskId}`, { state: { boardId } })
   }
 
   function handleBoardChange(nextBoardId: string) {
